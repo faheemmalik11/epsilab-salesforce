@@ -6,10 +6,9 @@ Status: Phase 6b (Lightning visual fidelity and Seller Home) on top of Phase 8 (
 
 ## Run with Docker
 
-The seed is not committed to this working repository. Copy and verify it first:
+The seed is committed in `seed/` (this repository is private), with its sha256 hashes in `seed/manifest.json`.
 
 ```bash
-scripts/fetch-seed.sh            # copies ../salesforce-work-trial/seed and checks sha256 hashes
 docker compose up --build
 ```
 

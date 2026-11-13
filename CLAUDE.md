@@ -43,8 +43,8 @@ Salesforce Sales Cloud clone built for the Epsilab work trial. Plan: `PLAN.md`. 
 - Work in the current development repository. Do not merge or push to the reviewer's repository (`../salesforce-work-trial`) without approval.
 
 ## Seed data
-- `seed/` is gitignored here. Copy it with `scripts/fetch-seed.sh`, which verifies the sha256 hashes in `seed/manifest.json`.
-- The seed is real pseudonymized company data. Never publish it.
+- `seed/` is committed in this private repository, byte-identical to the sha256 hashes in `seed/manifest.json`. `scripts/fetch-seed.sh` can re-copy and verify it from `../salesforce-work-trial`.
+- The seed is real pseudonymized company data. Never publish it outside private repositories.
 
 ## Project context and source of truth
 

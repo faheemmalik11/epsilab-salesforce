@@ -88,7 +88,7 @@ Each one is recorded with its source in `docs/reference/`.
 | Seed dates without a time are stored as midnight UTC | The seed has no time component |
 | The All Leads view excludes converted leads | Salesforce hides converted leads from the Leads tab |
 | Inactive users can't own new records but still show as owners of existing ones | Matches Salesforce; two seed users are inactive |
-| `seed/` is gitignored in this working repo and copied by `scripts/fetch-seed.sh` | The seed is real company data; the reviewer repo already contains it |
+| `seed/` is committed in this private working repo, byte-identical to `seed/manifest.json` | A clean clone builds the container without the reviewer repo; it stays out of public repositories because it's real company data |
 | Lead Status, Stage, Forecast Category, Contact Role and Task Status/Priority/Subtype are restricted picklists; Rating, Lead Source, Salutation, Industry and Type are not | The business rules depend on the restricted ones; the others hold descriptive values, and the seed has variants to keep |
 | Generated IDs use pod characters `SB0` plus a base-62 counter stored in the database | Deterministic across builds, and they can't collide with the seed's real IDs |
 | Referential integrity is checked in the service layer, not with SQLite foreign keys | Task.WhoId and Task.WhatId are polymorphic, and the service returns Salesforce-style errors |

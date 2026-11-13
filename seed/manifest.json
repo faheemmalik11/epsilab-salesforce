@@ -1,0 +1,35 @@
+{
+  "fixture": "salesforce-seed-v4",
+  "date_shift_days": 731,
+  "suggested_clock_start": "2028-11-11",
+  "counts": {
+    "leads": 21628,
+    "users": 9,
+    "status": {
+      "Prospecting": 20728,
+      "Registered": 703,
+      "Duplicate": 163,
+      "Demo Completed": 22,
+      "NQ_Nurture_Trade": 4,
+      "Disqualified - Bad Contact": 4,
+      "Unqualified - Not a Contractor": 1,
+      "MQL": 1,
+      "Disqualified - Out of Business": 1,
+      "Open - Not Contacted": 1
+    },
+    "rating_hot": 7111,
+    "lead_source_values": 22
+  },
+  "files": [
+    {
+      "path": "leads.csv",
+      "bytes": 12205702,
+      "sha256": "5ca529a49a5e90a60e2b50acb0f07dc63229389fe0195f50df8be45ca58132dd"
+    },
+    {
+      "path": "users-core.csv",
+      "bytes": 6339,
+      "sha256": "5f92ab3bbd8bff7276d4b94547f4e77241ef63c405bc73756fc0e05299e30720"
+    }
+  ]
+}

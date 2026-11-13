@@ -79,5 +79,5 @@ Kept visible until the final handoff (Phase 9).
 
 | Check | Why it matters | Status |
 |---|---|---|
-| The final seed files are present in the reviewer repository, byte-identical to its `manifest.json` | This working repo ignores `seed/`; the container build needs the seed, and the brief says everything the app needs is inside the container | ☐ Verify after merging into `../salesforce-work-trial`: hashes match and `docker compose build` succeeds from a clean clone there |
+| The final seed files are present in the reviewer repository, byte-identical to its `manifest.json` | The container build needs the seed, and the brief says everything the app needs is inside the container. This working repo now commits `seed/` too (private) | ☐ Verify after merging into `../salesforce-work-trial`: hashes match and `docker compose build` succeeds from a clean clone there |
 | Environment configuration meets the brief: "Configuration (ports, seed profile, clock) comes from environment variables, not hard-coded local paths" | D1d | ☑ All work at runtime on the same image since Phase 8. Re-check from a clean clone of the reviewer repo in Phase 9 |
