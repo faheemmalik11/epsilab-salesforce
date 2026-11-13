@@ -11,7 +11,7 @@ What this Salesforce Sales Cloud clone supports, following the brief's tiers. Ou
 | Opportunity lifecycle | Stage Path through every stage, the Amount rule after Qualification, Closed Won and Closed Lost, Contact Roles with a single primary, tasks, and Next Step |
 | Direct path | Account, then Contact, then Opportunity, with no lead |
 | Validation | Required fields, restricted picklists, references, inactive owners, converted-lead locks, and the Amount rule, with identical errors in the GUI, REST and MCP |
-| List views | All and My views, sorting, picklist filters, "Search this list", wrap or clip per column, inline edit with Cancel / Save, row actions (Edit, Delete, Change Owner), exact counts, infinite scroll |
+| List views | All and My views, sorting, filters on any column (equals, not equal to, contains), "Search this list", wrap or clip per column, inline edit with Cancel / Save, row actions (Edit, Delete, Change Owner), exact counts, infinite scroll |
 | Record pages | Details in Lightning sections (the lead page uses About, Get in Touch, Segment and History) with inline edit; Change Owner; Delete; related lists; Path |
 | Activity | Log a Call and New Task in a docked composer; a timeline grouped into Upcoming & Overdue and months, with date range, owner and type filters, Refresh and Expand All |
 | Navigation | App sidebar (Home, Contacts, Accounts, Sales), object tabs with New, recent records and list view menus, acting-user switcher |

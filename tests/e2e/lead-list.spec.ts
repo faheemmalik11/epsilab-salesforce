@@ -189,3 +189,59 @@ test('the other list views open, sort and page in under a second with the expand
   for (const [action, ms] of Object.entries(timings)) expect(ms, action).toBeLessThan(1000);
   expectHealthy(health);
 });
+
+test('filter by any column and value, with equals, not equal to and contains', async ({ page, api, health }) => {
+  const total = async (where: unknown[]) => (await (await api.post('/api/query', { data: { object: 'Lead', where: [{ field: 'IsConverted', op: 'eq', value: false }, ...where], limit: 1 } })).json()).totalSize as number;
+  const addFilter = async (field: string, op: string, value: string, kind: 'select' | 'fill') => {
+    await page.getByRole('button', { name: 'Add Filter' }).click();
+    await page.locator('#filter-field').selectOption(field);
+    await page.locator('#filter-operator').selectOption(op);
+    if (kind === 'select') await page.locator('#filter-value').selectOption(value);
+    else await page.locator('#filter-value').fill(value);
+    await page.getByTestId('filter-done').click();
+  };
+  const count = (n: number) => `${n.toLocaleString('en-US')} item${n === 1 ? '' : 's'}`;
+
+  await page.goto('/lightning/o/Lead/list');
+  await page.getByTestId('toggle-filters').click();
+  // Text column, contains.
+  await addFilter('Company', 'contains', '0BAC', 'fill');
+  await expect(page.getByTestId('filter-item')).toContainText('Company');
+  await expect(page.getByTestId('filter-item')).toContainText('contains 0BAC');
+  await page.getByTestId('filter-panel').getByRole('button', { name: 'Save' }).click();
+  const companyContains = await total([{ field: 'Company', op: 'contains', value: '0BAC' }]);
+  expect(companyContains).toBeGreaterThan(0);
+  await expect(page.getByTestId('list-meta')).toContainText(count(companyContains));
+  await expect(page).toHaveURL(/filter=Company\.contains%3A0BAC/);
+  const companies = await page.getByTestId('data-row').locator('td[data-field=Company]').allTextContents();
+  expect(companies.every((c) => c.toUpperCase().includes('0BAC'))).toBe(true);
+
+  // A picklist column with "not equal to", combined with the first filter.
+  await page.getByTestId('toggle-filters').click();
+  await addFilter('Rating', 'ne', 'Hot', 'select');
+  await page.getByTestId('filter-panel').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByTestId('list-meta')).toContainText(count(await total([{ field: 'Company', op: 'contains', value: '0BAC' }, { field: 'Rating', op: 'ne', value: 'Hot' }])));
+
+  // Reloading keeps the filters; Remove All clears them.
+  await page.reload();
+  await expect(page.getByTestId('list-meta')).toContainText('Filtered by');
+  await page.getByTestId('toggle-filters').click();
+  await expect(page.getByTestId('filter-item')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Remove All' }).click();
+  // The owner column filters by user, chosen by name.
+  const users = (await (await api.get('/api/users')).json()) as { Id: string; Name: string }[];
+  const jon = users.find((u) => u.Name === 'Jon Santiago')!;
+  await addFilter('OwnerId', 'eq', jon.Id, 'select');
+  await expect(page.getByTestId('filter-item')).toContainText('equals Jon Santiago');
+  await page.getByTestId('filter-panel').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByTestId('list-meta')).toContainText(count(await total([{ field: 'OwnerId', op: 'eq', value: jon.Id }])));
+
+  // A number field with a typed value.
+  await page.getByTestId('toggle-filters').click();
+  await page.getByRole('button', { name: 'Remove All' }).click();
+  const revenue = (await (await api.post('/api/query', { data: { object: 'Lead', where: [{ field: 'AnnualRevenue', op: 'notNull' }], limit: 1 } })).json()).records[0].AnnualRevenue as number;
+  await addFilter('AnnualRevenue', 'eq', String(revenue), 'fill');
+  await page.getByTestId('filter-panel').getByRole('button', { name: 'Save' }).click();
+  await expect(page.getByTestId('list-meta')).toContainText(count(await total([{ field: 'AnnualRevenue', op: 'eq', value: revenue }])));
+  expectHealthy(health);
+});

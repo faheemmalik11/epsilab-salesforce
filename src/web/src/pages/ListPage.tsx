@@ -20,20 +20,51 @@ import { getPinnedView, setPinnedView, type ListView } from '../lib/pinnedView';
 import { LAYOUTS, recordTitle, type TabObject } from '../lib/layouts';
 import { recordUrl } from '../components/FieldOutput';
 import { Spinner } from '../components/Spinner';
+import { filterCondition, isFilterable, OPERATOR_LABELS, operatorsFor, parseFilter, serializeFilter, type FilterOperator, type ListFilter } from '../lib/listFilters';
 
 const PAGE_SIZE = 50;
 
-interface Filter {
-  field: string;
-  value: string;
+/** The value box for a filter: a list for picklists, checkboxes and owners, else a typed input. */
+function FilterValueInput({ field, value, onChange }: { field: FieldDescribe | undefined; value: string; onChange(value: string): void }) {
+  const { users } = useActingUser();
+  const options: { value: string; label: string }[] | null = !field
+    ? []
+    : field.name === 'OwnerId'
+      ? users.map((u) => ({ value: u.Id, label: u.IsActive ? u.Name : `${u.Name} (inactive)` }))
+      : field.type === 'picklist'
+        ? (field.picklistValues ?? []).map((v) => ({ value: v.value, label: v.value }))
+        : field.type === 'boolean'
+          ? [
+              { value: 'true', label: 'True' },
+              { value: 'false', label: 'False' },
+            ]
+          : null;
+  if (options) {
+    return (
+      <div className="slds-select_container">
+        <select id="filter-value" className="slds-select" value={value} disabled={!field} onChange={(e) => onChange(e.target.value)}>
+          <option value="">--Select a value--</option>
+          {options.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    );
+  }
+  const type = field!.type === 'date' ? 'date' : ['int', 'double', 'currency', 'percent'].includes(field!.type) ? 'number' : 'text';
+  return <input id="filter-value" className="slds-input" type={type} step="any" value={value} placeholder="Enter a value" onChange={(e) => onChange(e.target.value)} />;
 }
 
-/** Filters live in the URL as field:value pairs, so a list view can be reloaded or shared. */
-function parseFilters(params: URLSearchParams): Filter[] {
-  return params.getAll('filter').flatMap((raw) => {
-    const at = raw.indexOf(':');
-    return at > 0 ? [{ field: raw.slice(0, at), value: raw.slice(at + 1) }] : [];
-  });
+/** "Rating equals Hot", with owners shown by name and checkboxes as True or False. */
+function useFilterText() {
+  const { users } = useActingUser();
+  return (filter: ListFilter, field: FieldDescribe | undefined) => {
+    const value =
+      field?.name === 'OwnerId' ? (users.find((u) => u.Id === filter.value)?.Name ?? filter.value) : field?.type === 'boolean' ? (filter.value === 'true' ? 'True' : 'False') : filter.value;
+    return `${OPERATOR_LABELS[filter.op]} ${value}`;
+  };
 }
 
 function FilterPanel({
@@ -43,13 +74,15 @@ function FilterPanel({
   onClose,
 }: {
   fields: FieldDescribe[];
-  applied: Filter[];
-  onApply(filters: Filter[]): void;
+  applied: ListFilter[];
+  onApply(filters: ListFilter[]): void;
   onClose(): void;
 }) {
-  const [draft, setDraft] = useState<Filter[]>(applied);
-  const [adding, setAdding] = useState<Filter | null>(null);
+  const [draft, setDraft] = useState<ListFilter[]>(applied);
+  const [adding, setAdding] = useState<ListFilter | null>(null);
   const fieldFor = (name: string) => fields.find((f) => f.name === name);
+  const filterText = useFilterText();
+  const addingField = adding ? fieldFor(adding.field) : undefined;
 
   return (
     <div className="slds-panel slds-size_medium slds-panel_docked slds-panel_docked-right slds-is-open" data-testid="filter-panel">
@@ -65,9 +98,9 @@ function FilterPanel({
           {draft.map((filter, index) => (
             <li key={`${filter.field}-${index}`} className="slds-item slds-box slds-box_x-small slds-grid slds-grid_align-spread">
               <span data-testid="filter-item">
-                <span className="slds-text-title">{fieldFor(filter.field)?.label}</span>
+                <span className="slds-text-title">{fieldFor(filter.field)?.label ?? filter.field}</span>
                 <br />
-                equals {filter.value}
+                {filterText(filter, fieldFor(filter.field))}
               </span>
               <button type="button" className="slds-button slds-button_icon" title="Remove filter" onClick={() => setDraft(draft.filter((_, i) => i !== index))}>
                 <ButtonIcon name="close" />
@@ -87,7 +120,7 @@ function FilterPanel({
                   id="filter-field"
                   className="slds-select"
                   value={adding.field}
-                  onChange={(e) => setAdding({ field: e.target.value, value: '' })}
+                  onChange={(e) => setAdding({ field: e.target.value, op: 'eq', value: '' })}
                 >
                   <option value="">--Select a field--</option>
                   {fields.map((f) => (
@@ -99,36 +132,38 @@ function FilterPanel({
               </div>
             </div>
             <div className="slds-form-element slds-m-bottom_x-small">
-              <span className="slds-form-element__label">Operator</span>
-              <div className="slds-form-element__static">equals</div>
-            </div>
-            <div className="slds-form-element slds-m-bottom_x-small">
-              <label className="slds-form-element__label" htmlFor="filter-value">
-                Value
+              <label className="slds-form-element__label" htmlFor="filter-operator">
+                Operator
               </label>
               <div className="slds-select_container">
                 <select
-                  id="filter-value"
+                  id="filter-operator"
                   className="slds-select"
-                  value={adding.value}
-                  disabled={!adding.field}
-                  onChange={(e) => setAdding({ ...adding, value: e.target.value })}
+                  value={adding.op}
+                  disabled={!addingField}
+                  onChange={(e) => setAdding({ ...adding, op: e.target.value as FilterOperator })}
                 >
-                  <option value="">--Select a value--</option>
-                  {(fieldFor(adding.field)?.picklistValues ?? []).map((v) => (
-                    <option key={v.value} value={v.value}>
-                      {v.value}
+                  {(addingField ? operatorsFor(addingField) : (['eq'] as FilterOperator[])).map((op) => (
+                    <option key={op} value={op}>
+                      {OPERATOR_LABELS[op]}
                     </option>
                   ))}
                 </select>
               </div>
             </div>
+            <div className="slds-form-element slds-m-bottom_x-small">
+              <label className="slds-form-element__label" htmlFor="filter-value">
+                Value
+              </label>
+              <FilterValueInput key={adding.field} field={addingField} value={adding.value} onChange={(value) => setAdding({ ...adding, value })} />
+            </div>
             <button
               type="button"
               className="slds-button slds-button_neutral"
-              disabled={!adding.field || !adding.value}
+              data-testid="filter-done"
+              disabled={!adding.field || adding.value.trim() === ''}
               onClick={() => {
-                setDraft([...draft, adding]);
+                setDraft([...draft, { ...adding, value: adding.value.trim() }]);
                 setAdding(null);
               }}
             >
@@ -136,7 +171,7 @@ function FilterPanel({
             </button>
           </div>
         ) : (
-          <button type="button" className="slds-button slds-m-top_small" onClick={() => setAdding({ field: '', value: '' })}>
+          <button type="button" className="slds-button slds-m-top_small" onClick={() => setAdding({ field: '', op: 'eq', value: '' })}>
             Add Filter
           </button>
         )}
@@ -187,7 +222,7 @@ export function ListPage({ object }: { object: TabObject }) {
   const viewParam = params.get('view');
   const view: ListView = viewParam === 'mine' || viewParam === 'all' ? viewParam : pinnedView;
   const sort: Sort = { field: params.get('sort') ?? layout.defaultSort, direction: params.get('dir') === 'desc' ? 'desc' : 'asc' };
-  const filters = parseFilters(params);
+  const filters = params.getAll('filter').map(parseFilter).filter((f): f is ListFilter => f !== null);
   const searchField = layout.columns.find((c) => c.link && !c.relationship)?.field ?? 'Name';
   const plural = describe.data?.labelPlural ?? `${object}s`;
   const fields = new Map((describe.data?.fields ?? []).map((f) => [f.name, f]));
@@ -195,7 +230,7 @@ export function ListPage({ object }: { object: TabObject }) {
   const where: QueryCondition[] = [
     ...(object === 'Lead' ? [{ field: 'IsConverted', op: 'eq' as const, value: false }] : []),
     ...(view === 'mine' && current ? [{ field: 'OwnerId', op: 'eq' as const, value: current.Id }] : []),
-    ...filters.map((f) => ({ field: f.field, op: 'eq' as const, value: f.value })),
+    ...filters.map((f) => filterCondition(f, fields.get(f.field))),
     ...(search ? [{ field: searchField, op: 'contains' as const, value: search }] : []),
   ];
 
@@ -291,7 +326,14 @@ export function ListPage({ object }: { object: TabObject }) {
   const viewLabel = `${view === 'mine' ? 'My' : 'All'} ${plural}`;
   const sortLabel = describe.data ? (fields.get(sort.field)?.label ?? sort.field) : '';
   const filterLabels = [...new Set(filters.map((f) => fields.get(f.field)?.label ?? f.field))];
-  const picklistFields = (describe.data?.fields ?? []).filter((f) => f.type === 'picklist');
+  // The list's own columns first, then every other field a user can filter on.
+  const columnOrder = (name: string) => {
+    const index = layout.columns.findIndex((c) => c.field === name);
+    return index < 0 ? layout.columns.length : index;
+  };
+  const filterFields = (describe.data?.fields ?? [])
+    .filter(isFilterable)
+    .sort((a, b) => columnOrder(a.name) - columnOrder(b.name) || a.label.localeCompare(b.label));
 
   const toolbarStubs = [
     { icon: 'settings', label: 'List View Controls' },
@@ -511,11 +553,11 @@ export function ListPage({ object }: { object: TabObject }) {
         )}
         {showFilters && (
           <FilterPanel
-            fields={picklistFields}
+            fields={filterFields}
             applied={filters}
             onClose={() => setShowFilters(false)}
             onApply={(next) => {
-              update({ filter: next.map((f) => `${f.field}:${f.value}`) });
+              update({ filter: next.map(serializeFilter) });
               setShowFilters(false);
             }}
           />
