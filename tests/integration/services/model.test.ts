@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { formatId, isValidId } from '../../../src/server/db/ids.js';
 import { getObject, OBJECTS, type ObjectName } from '../../../src/server/metadata/index.js';
-import { convertLead, createRecord, getRecord, type SObject } from '../../../src/server/services/index.js';
+import { convertLead, createRecord, deleteRecord, getRecord, updateRecord, type SObject } from '../../../src/server/services/index.js';
 import { createServiceFixture, errorsOf, type ServiceFixture } from '../../services.js';
 
 // Model-wide checks driven by the metadata, so every object and field is covered, not just samples.
@@ -54,9 +54,20 @@ describe('every writable object', () => {
     ]);
   });
 
-  it('User records cannot be created through the service', () => {
-    expect(errorsOf(() => createRecord(f.ctx, 'User', { LastName: 'X' }))).toEqual([
-      expect.objectContaining({ errorCode: 'INVALID_FIELD_FOR_INSERT_UPDATE', fields: ['LastName'] }),
+  it('User records cannot be created, edited or deleted, even with no fields', () => {
+    const readOnly = (action: string) => [
+      { errorCode: 'INSUFFICIENT_ACCESS_OR_READONLY', message: `You don't have permission to ${action} User records.` },
+    ];
+    const before = f.count('User');
+    expect(errorsOf(() => createRecord(f.ctx, 'User', {}))).toEqual(readOnly('create'));
+    expect(errorsOf(() => updateRecord(f.ctx, 'User', f.users.rep, {}))).toEqual(readOnly('edit'));
+    expect(errorsOf(() => deleteRecord(f.ctx, 'User', f.users.rep))).toEqual(readOnly('delete'));
+    expect(f.count('User')).toBe(before);
+  });
+
+  it('rejects an Id in the record data with the Salesforce message', () => {
+    expect(errorsOf(() => createRecord(f.ctx, 'Account', { Id: '001SB0000000001YAA', Name: 'A' }))).toEqual([
+      { errorCode: 'INVALID_FIELD', message: 'The Id field should not be specified in the sobject data.', fields: ['Id'] },
     ]);
   });
 });

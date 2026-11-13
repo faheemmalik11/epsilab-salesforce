@@ -16,11 +16,14 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | Lead conversion in one SQLite transaction, including its mutation log entries and ID counters | The brief requires "a failure creates nothing"; a test forces a failure after the account and contact inserts |
 | One build entry point, `scripts/build-db.ts`: schema, verified seed import, then generated records | The importer and generator always run together in the same order, at image build |
 | Seed rows are bulk-inserted directly; generated records go through the service layer | The seed must be kept exactly as given, including mess the save rules would reject; generated records must pass every save rule |
+| REST follows Salesforce shapes: create returns `201 { id, success, errors }`, PATCH and DELETE return 204, records carry `attributes` | Familiar to anyone who knows the Salesforce REST API |
+| Queries use `POST /api/query` with a JSON filter, not SOQL | A SOQL parser is out of scope for one day; the JSON form maps directly to the service query and the MCP tool |
+| MCP adds convenience tools (`log_call`, `create_task`, `add_contact_role`, `update_opportunity_stage`) beside generic CRUD | Easier for agents; each is a thin call into the same service functions |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
 ## Stubbed
 
-None yet.
+None yet. The GUI is still the Phase 1 stack-check page; nothing on it suggests a working feature.
 
 ## Skipped
 
@@ -76,5 +79,10 @@ Each one is recorded with its source in `docs/reference/`.
 | Generated accounts use the names of companies shared by several seed leads, and contacts reuse those leads' (pseudonymized) names | Gives the "attach to an existing account" conversion path realistic matches |
 | Generated data never creates, edits or converts a lead, and adds no tasks to seed leads | Keeps the 21,628 and 7,111 counts exact and the seed rows untouched |
 | The mutation log is emptied at the end of the build | The baseline has no history; the log shows changes since the last build or reset |
+| The acting user is the `X-User-Id` header (REST) or an `actingUserId` argument (MCP), defaulting to `DEFAULT_USER_ID` | No sessions are needed, and MCP is stateless |
+| Users are read-only as an object: create, edit and delete return `INSUFFICIENT_ACCESS_OR_READONLY` | Users are seeded only; the brief puts user management out of scope |
+| Malformed JSON bodies return `JSON_PARSER_ERROR` | That's the REST-specific code Salesforce uses; it isn't in the SOAP StatusCode list we could read, so this is from memory |
+| Bad query paging returns `MALFORMED_QUERY`; an unknown operator returns `INVALID_QUERY_FILTER_OPERATOR` | Documented Salesforce codes |
+| `SEED_PROFILE` and `CLOCK` shape the baseline data at image build; at runtime `CLOCK` and `CLOCK_MODE` drive the app clock | The baseline is built once per image so start-up never writes; per-profile snapshots come with the reset work in Phase 8 |
 | Unknown paths with a file extension (such as `/favicon.ico`) return a 404 error array; extensionless paths serve the app shell | Missing assets must fail visibly instead of returning HTML with status 200 |
 | The favicon is a neutral local icon, not the Salesforce logo | Avoids using Salesforce branding assets |

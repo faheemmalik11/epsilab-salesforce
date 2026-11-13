@@ -20,7 +20,8 @@ ENV NODE_ENV=production \
     SEED_DIR=/app/seed \
     WEB_DIR=/app/dist/web \
     SEED_PROFILE=default \
-    CLOCK=2028-11-11T09:00:00Z
+    CLOCK=2028-11-11T09:00:00Z \
+    CLOCK_MODE=offset
 WORKDIR /app
 COPY --from=build /app/package.json ./
 COPY --from=build /app/node_modules ./node_modules

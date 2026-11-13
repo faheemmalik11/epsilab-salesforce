@@ -14,7 +14,7 @@
     "build:db": "node dist/server/scripts/build-db.js",
     "start": "node dist/server/src/server/main.js",
     "dev": "tsx watch src/server/main.ts",
-    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.web.json --noEmit",
+    "typecheck": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.web.json --noEmit && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "e2e": "playwright test",
     "smoke": "scripts/smoke.sh"

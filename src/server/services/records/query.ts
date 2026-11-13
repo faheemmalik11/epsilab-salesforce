@@ -73,7 +73,9 @@ function conditionSql(field: FieldDef, condition: Condition, params: unknown[], 
       return `${column} LIKE ? ESCAPE '\\'`;
     }
     default:
-      errors.push(apiError('INVALID_FIELD', `Unsupported operator '${String(condition.op)}'`, [field.name]));
+      errors.push(
+        apiError('INVALID_QUERY_FILTER_OPERATOR', `Unsupported operator '${String(condition.op)}'`, [field.name]),
+      );
       return '1';
   }
 }
@@ -107,10 +109,10 @@ export function queryRecords(ctx: ServiceContext, options: QueryOptions): QueryR
   const limit = options.limit ?? DEFAULT_LIMIT;
   const offset = options.offset ?? 0;
   if (!Number.isInteger(limit) || limit < 1 || limit > MAX_LIMIT) {
-    errors.push(apiError('INVALID_FIELD', `limit must be an integer from 1 to ${MAX_LIMIT}`));
+    errors.push(apiError('MALFORMED_QUERY', `limit must be an integer from 1 to ${MAX_LIMIT}`));
   }
   if (!Number.isInteger(offset) || offset < 0) {
-    errors.push(apiError('INVALID_FIELD', 'offset must be a non-negative integer'));
+    errors.push(apiError('MALFORMED_QUERY', 'offset must be a non-negative integer'));
   }
   if (errors.length > 0) throw new ServiceError(errors);
 

@@ -1,7 +1,7 @@
 import { nextId, isValidId, toId18 } from '../../db/ids.js';
 import { getObject, objectForId, type FieldDef, type ObjectDef, type ObjectName } from '../../metadata/index.js';
 import type { ServiceContext } from '../context.js';
-import { apiError, notFound, requiredFieldsMissing, ServiceError, type ApiError } from '../errors.js';
+import { apiError, fail, notFound, requiredFieldsMissing, ServiceError, type ApiError } from '../errors.js';
 import { logMutation } from '../mutationLog.js';
 import { OBJECT_RULES } from './objectRules.js';
 import type { RuleOps, WriteEvent } from './rules.js';
@@ -13,6 +13,12 @@ export interface WriteOptions {
 }
 
 const AUDIT_FIELDS = new Set(['Id', 'CreatedById', 'CreatedDate', 'LastModifiedById', 'LastModifiedDate']);
+
+function assertWritable(object: ObjectDef, action: 'create' | 'edit' | 'delete'): void {
+  if (object.readOnly) {
+    fail('INSUFFICIENT_ACCESS_OR_READONLY', `You don't have permission to ${action} ${object.label} records.`);
+  }
+}
 
 function hasField(object: ObjectDef, name: string): boolean {
   return object.fields.some((f) => f.name === name);
@@ -55,6 +61,10 @@ function coerceInput(
 ): SObject {
   const values: SObject = {};
   for (const [name, raw] of Object.entries(input)) {
+    if (name === 'Id') {
+      errors.push(apiError('INVALID_FIELD', 'The Id field should not be specified in the sobject data.', ['Id']));
+      continue;
+    }
     const field = object.fields.find((f) => f.name === name);
     if (!field) {
       errors.push(apiError('INVALID_FIELD', `No such column '${name}' on sobject of type ${object.name}`, [name]));
@@ -173,6 +183,7 @@ export function createRecord(
   options: WriteOptions = {},
 ): SObject {
   const object = getObject(objectName);
+  assertWritable(object, 'create');
   const system = options.system ?? false;
   const errors: ApiError[] = [];
   const values = coerceInput(object, input, 'create', system, errors);
@@ -222,6 +233,7 @@ export function updateRecord(
   options: WriteOptions = {},
 ): SObject {
   const object = getObject(objectName);
+  assertWritable(object, 'edit');
   const system = options.system ?? false;
   const recordId = parseRecordId(object, id);
   const previous = findRecord(ctx, object, recordId);
@@ -265,6 +277,7 @@ export function updateRecord(
 
 export function deleteRecord(ctx: ServiceContext, objectName: ObjectName, id: string): void {
   const object = getObject(objectName);
+  assertWritable(object, 'delete');
   const recordId = parseRecordId(object, id);
   ctx.db.transaction(() => deleteCascade(ctx, object, recordId))();
 }

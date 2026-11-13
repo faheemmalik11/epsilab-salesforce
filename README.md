@@ -2,7 +2,7 @@
 
 A working clone of the Salesforce Sales Cloud core (Lead, Account, Contact, Opportunity, Task, with seeded Users), with a GUI, a REST API and an MCP server on one shared service layer.
 
-Status: Phase 1 (stack proof). See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
+Status: Phase 5 (REST API and MCP). The GUI is still the Phase 1 stack-check page. See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
 
 ## Run with Docker
 
@@ -19,7 +19,23 @@ docker compose up --build
 | REST API | http://localhost:8080/api |
 | MCP (Streamable HTTP, stateless) | http://localhost:8080/mcp |
 
-Configuration comes from environment variables (see `.env.example`): `GUI_PORT`, `API_PORT`, `SEED_PROFILE`, `CLOCK`, `MCP_ALLOWED_HOSTS`.
+Configuration comes from environment variables (see `.env.example`): `GUI_PORT`, `API_PORT`, `SEED_PROFILE`, `CLOCK`, `CLOCK_MODE`, `DEFAULT_USER_ID`, `MCP_ALLOWED_HOSTS`.
+
+## REST API
+
+Shaped like the Salesforce REST API. Errors are always the Salesforce array `[{ "errorCode", "message", "fields" }]`, with HTTP 400 (404 for unknown records or objects). Send `X-User-Id: <user id>` to act as a seeded user; without it the API acts as `DEFAULT_USER_ID`, or the first active user by name.
+
+| Method and path | Purpose |
+|---|---|
+| `GET /api/sobjects`, `GET /api/sobjects/{object}/describe` | Objects and field metadata, including picklists |
+| `POST /api/sobjects/{object}` | Create; returns `201 { id, success, errors }` |
+| `GET` / `PATCH` / `DELETE /api/sobjects/{object}/{id}` | Read; update (`204`); delete (`204`) |
+| `POST /api/query` | `{ object, where: [{ field, op, value }], orderBy: [{ field, direction }], limit, offset }` → `{ totalSize, done, records }` |
+| `POST /api/leads/{id}/convert` | `{ convertedStatus, accountId?, doNotCreateOpportunity?, opportunityName?, ownerId? }` |
+| `POST /api/tasks/log-call` | `{ whoId?, whatId?, subject?, description?, activityDate? }` |
+| `GET /api/users`, `GET /api/mutations` | Seeded users; the mutation log since the last build |
+
+Query operators: `eq`, `ne`, `in`, `isNull`, `notNull`, `contains`. The All Leads view is `IsConverted eq false`.
 
 ## Develop
 
@@ -34,6 +50,17 @@ scripts/smoke.sh               # full stack check inside the linux/amd64 contain
 
 ## MCP tools
 
+Streamable HTTP, stateless, at `http://localhost:8080/mcp`. Every tool calls the same service layer as REST, and failures return the same Salesforce error array (`isError: true`, `structuredContent.errors`). Tools that write accept an optional `actingUserId`.
+
 | Tool | Description |
 |---|---|
-| `health` | Reports the seed fixture loaded into the database and the SQLite version |
+| `health` | Seed fixture and SQLite version |
+| `list_objects`, `describe_object` | Supported objects; field metadata and picklists |
+| `list_users` | Seeded users and active flags |
+| `create_record`, `get_record`, `update_record`, `delete_record` | CRUD on any writable object |
+| `query_records` | Filter, sort and page one object |
+| `convert_lead` | Atomic lead conversion |
+| `log_call`, `create_task` | Activities |
+| `add_contact_role` | Contact role on an opportunity |
+| `update_opportunity_stage` | Stage change, with optional amount and next step |
+| `get_mutation_log` | Changes since the last build |

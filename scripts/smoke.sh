@@ -33,6 +33,7 @@ wait_for http://localhost:8080/api/health
 wait_for http://localhost:3000/
 
 echo "== REST: $(curl -fsS http://localhost:8080/api/health)"
+echo "== REST All Leads Hot: $(curl -fsS -H 'content-type: application/json' -d '{"object":"Lead","where":[{"field":"IsConverted","op":"eq","value":false},{"field":"Rating","op":"eq","value":"Hot"}],"orderBy":[{"field":"Company"}],"limit":1}' http://localhost:8080/api/query | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).totalSize))')"
 echo "== MCP:  $(npx tsx tests/smoke/mcp-check.ts http://localhost:8080/mcp)"
 
 echo "== GUI (Playwright)"
@@ -47,5 +48,6 @@ for _ in $(seq 1 30); do
   sleep 1
 done
 docker exec -i "$OFFLINE" node --input-type=module - < tests/smoke/offline-check.mjs
+docker exec -i "$OFFLINE" node --input-type=module - < tests/smoke/lifecycle-check.mjs
 
 echo "SMOKE PASSED"

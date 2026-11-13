@@ -2,13 +2,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import Fastify, { type FastifyInstance, type FastifyReply } from 'fastify';
 import fastifyStatic from '@fastify/static';
+import { registerErrorHandler } from './api/errors.js';
 import { registerApiRoutes } from './api/routes.js';
 import { registerMcpRoutes } from './mcp/routes.js';
-import type { Db } from './db/connection.js';
+import type { RuntimeDeps } from './requestContext.js';
 import { apiError } from './services/errors.js';
 
-export interface AppDeps {
-  db: Db;
+export interface AppDeps extends RuntimeDeps {
   mcpAllowedHosts: string[];
   logger?: boolean;
 }
@@ -26,8 +26,9 @@ function isClientRoute(url: string): boolean {
 /** REST API and MCP endpoint, served on API_PORT. */
 export async function buildApiApp(deps: AppDeps): Promise<FastifyInstance> {
   const app = Fastify({ logger: deps.logger ?? false });
+  registerErrorHandler(app);
   await registerApiRoutes(app, deps);
-  await registerMcpRoutes(app, { db: deps.db, allowedHosts: deps.mcpAllowedHosts });
+  await registerMcpRoutes(app, { ...deps, allowedHosts: deps.mcpAllowedHosts });
   app.setNotFoundHandler((_request, reply) => sendNotFound(reply));
   return app;
 }
@@ -43,6 +44,7 @@ export async function buildGuiApp(deps: AppDeps & { webDir: string }): Promise<F
   }
 
   const app = Fastify({ logger: deps.logger ?? false });
+  registerErrorHandler(app);
   await registerApiRoutes(app, deps);
   await app.register(fastifyStatic, { root: deps.webDir });
   app.setNotFoundHandler((request, reply) =>

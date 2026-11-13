@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildGuiApp } from '../../src/server/app.js';
+import { fixedClock } from '../../src/server/clock.js';
 import { createTestDb, type TestDb } from '../helpers.js';
 
 const NOT_FOUND = [{ errorCode: 'NOT_FOUND', message: 'The requested resource does not exist' }];
@@ -19,7 +20,7 @@ describe('GUI server', () => {
     fs.writeFileSync(path.join(webDir, 'index.html'), '<!doctype html><title>app</title>');
     fs.mkdirSync(path.join(webDir, 'assets'));
     fs.writeFileSync(path.join(webDir, 'assets', 'app.js'), 'console.log(1)');
-    app = await buildGuiApp({ db: t.db, mcpAllowedHosts: [], webDir });
+    app = await buildGuiApp({ db: t.db, clock: fixedClock('2028-11-11T09:00:00Z'), mcpAllowedHosts: [], webDir });
   });
   afterAll(async () => {
     await app.close();

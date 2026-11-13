@@ -1,11 +1,18 @@
 import { buildApiApp, buildGuiApp } from './app.js';
+import { clockFromConfig } from './clock.js';
 import { databasePath, loadConfig } from './config.js';
 import { openDatabase } from './db/connection.js';
 
 async function main(): Promise<void> {
   const config = loadConfig();
   const db = openDatabase(databasePath(config));
-  const deps = { db, mcpAllowedHosts: config.mcpAllowedHosts, logger: true };
+  const deps = {
+    db,
+    clock: clockFromConfig(config.clock, config.clockMode),
+    defaultUserId: config.defaultUserId,
+    mcpAllowedHosts: config.mcpAllowedHosts,
+    logger: true,
+  };
 
   const api = await buildApiApp(deps);
   const gui = await buildGuiApp({ ...deps, webDir: config.webDir });

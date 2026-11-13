@@ -9,6 +9,7 @@ export const User: ObjectDef = {
   label: 'User',
   labelPlural: 'Users',
   keyPrefix: '005',
+  readOnly: true,
   fields: [
     idField(),
     field('Username', 'Username', 'string', readOnly),

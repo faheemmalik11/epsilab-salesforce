@@ -2,6 +2,7 @@ import fs from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApiApp } from '../../src/server/app.js';
+import { fixedClock } from '../../src/server/clock.js';
 import { createTestDb, type TestDb } from '../helpers.js';
 
 const manifest = JSON.parse(fs.readFileSync('seed/manifest.json', 'utf8'));
@@ -12,7 +13,7 @@ describe('REST API', () => {
 
   beforeAll(async () => {
     t = createTestDb();
-    app = await buildApiApp({ db: t.db, mcpAllowedHosts: ['localhost'] });
+    app = await buildApiApp({ db: t.db, clock: fixedClock('2028-11-11T09:00:00Z'), mcpAllowedHosts: ['localhost'] });
   });
   afterAll(async () => {
     await app.close();

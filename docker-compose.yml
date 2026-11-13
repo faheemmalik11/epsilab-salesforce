@@ -9,4 +9,6 @@ services:
     environment:
       SEED_PROFILE: ${SEED_PROFILE:-default}
       CLOCK: ${CLOCK:-2028-11-11T09:00:00Z}
+      CLOCK_MODE: ${CLOCK_MODE:-offset}
+      DEFAULT_USER_ID: ${DEFAULT_USER_ID:-}
       MCP_ALLOWED_HOSTS: ${MCP_ALLOWED_HOSTS:-localhost,127.0.0.1,[::1]}

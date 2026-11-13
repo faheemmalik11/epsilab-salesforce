@@ -51,7 +51,11 @@ describe('queryRecords', () => {
     expect(errorsOf(() => queryRecords(f.ctx, { object: 'Lead', where: [{ field: 'Nope', op: 'eq', value: 1 }] }))).toEqual([
       expect.objectContaining({ errorCode: 'INVALID_FIELD', fields: ['Nope'] }),
     ]);
-    expect(errorsOf(() => queryRecords(f.ctx, { object: 'Lead', limit: 0 }))).toHaveLength(1);
-    expect(errorsOf(() => queryRecords(f.ctx, { object: 'Lead', limit: 5000 }))).toHaveLength(1);
+    expect(errorsOf(() => queryRecords(f.ctx, { object: 'Lead', limit: 0 }))).toEqual([expect.objectContaining({ errorCode: 'MALFORMED_QUERY' })]);
+    expect(errorsOf(() => queryRecords(f.ctx, { object: 'Lead', limit: 5000 }))).toEqual([expect.objectContaining({ errorCode: 'MALFORMED_QUERY' })]);
+    expect(errorsOf(() => queryRecords(f.ctx, { object: 'Lead', offset: -1 }))).toEqual([expect.objectContaining({ errorCode: 'MALFORMED_QUERY' })]);
+    expect(
+      errorsOf(() => queryRecords(f.ctx, { object: 'Lead', where: [{ field: 'Rating', op: 'like' as never, value: 'x' }] })),
+    ).toEqual([expect.objectContaining({ errorCode: 'INVALID_QUERY_FILTER_OPERATOR', fields: ['Rating'] })]);
   });
 });

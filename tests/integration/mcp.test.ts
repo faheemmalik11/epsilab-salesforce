@@ -2,6 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { buildApiApp } from '../../src/server/app.js';
+import { fixedClock } from '../../src/server/clock.js';
 import { getHealth } from '../../src/server/services/health.js';
 import { createTestDb, type TestDb } from '../helpers.js';
 
@@ -12,7 +13,7 @@ describe('MCP over Streamable HTTP', () => {
 
   beforeAll(async () => {
     t = createTestDb();
-    app = await buildApiApp({ db: t.db, mcpAllowedHosts: ['localhost', '127.0.0.1'] });
+    app = await buildApiApp({ db: t.db, clock: fixedClock('2028-11-11T09:00:00Z'), mcpAllowedHosts: ['localhost', '127.0.0.1'] });
     await app.listen({ host: '127.0.0.1', port: 0 });
     const address = app.server.address();
     if (typeof address !== 'object' || !address) throw new Error('no address');

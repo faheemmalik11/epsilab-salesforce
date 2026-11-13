@@ -9,11 +9,15 @@ export interface AppConfig {
   webDir: string;
   seedProfile: string;
   clock: string;
+  /** "offset" advances from CLOCK with real time; "fixed" always returns CLOCK. */
+  clockMode: string;
+  /** User the API acts as when a request names none. Defaults to the first active user by name. */
+  defaultUserId: string | null;
   mcpAllowedHosts: string[];
 }
 
-function readPort(name: string, fallback: number): number {
-  const raw = process.env[name];
+function readPort(env: NodeJS.ProcessEnv, name: string, fallback: number): number {
+  const raw = env[name];
   if (raw === undefined || raw === '') return fallback;
   const port = Number(raw);
   if (!Number.isInteger(port) || port < 0 || port > 65535) {
@@ -26,13 +30,15 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   const root = process.cwd();
   return {
     host: env.HOST || '0.0.0.0',
-    guiPort: readPort('GUI_PORT', 3000),
-    apiPort: readPort('API_PORT', 8080),
+    guiPort: readPort(env, 'GUI_PORT', 3000),
+    apiPort: readPort(env, 'API_PORT', 8080),
     dataDir: path.resolve(root, env.DATA_DIR || 'data'),
     seedDir: path.resolve(root, env.SEED_DIR || 'seed'),
     webDir: path.resolve(root, env.WEB_DIR || 'dist/web'),
     seedProfile: env.SEED_PROFILE || 'default',
     clock: env.CLOCK || '2028-11-11T09:00:00Z',
+    clockMode: env.CLOCK_MODE || 'offset',
+    defaultUserId: env.DEFAULT_USER_ID || null,
     mcpAllowedHosts: (env.MCP_ALLOWED_HOSTS || 'localhost,127.0.0.1,[::1]')
       .split(',')
       .map((h) => h.trim())

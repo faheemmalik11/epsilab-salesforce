@@ -55,5 +55,7 @@ export interface ObjectDef {
   label: string;
   labelPlural: string;
   keyPrefix: string;
+  /** Seeded only: no create, update or delete through the API. */
+  readOnly?: boolean;
   fields: readonly FieldDef[];
 }
