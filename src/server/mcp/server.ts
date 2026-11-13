@@ -2,7 +2,7 @@ import { McpServer } from '@modelcontextprotocol/server';
 import { z } from 'zod';
 import { OBJECTS, type ObjectName } from '../metadata/index.js';
 import { OPPORTUNITY_STAGE } from '../metadata/picklists.js';
-import { createdResult, describeObject, listObjects, withAttributes } from '../presenters.js';
+import { createdResult, describeObject, listObjects, presentRecord, presentRecords } from '../presenters.js';
 import { contextFor, type RuntimeDeps } from '../requestContext.js';
 import {
   convertLead,
@@ -104,7 +104,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     'get_record',
     { description: 'Gets one record by ID.', inputSchema: z.object({ object: objectName, id: recordId, actingUserId }) },
     async ({ object, id, actingUserId: userId }) =>
-      run(deps, userId, (ctx) => withAttributes(object, getRecord(ctx, object, id))),
+      run(deps, userId, (ctx) => presentRecord(deps.db, object, getRecord(ctx, object, id))),
   );
 
   server.registerTool(
@@ -114,7 +114,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ object: objectName, id: recordId, fields, actingUserId }),
     },
     async ({ object, id, fields: values, actingUserId: userId }) =>
-      run(deps, userId, (ctx) => withAttributes(object, updateRecord(ctx, object, id, values))),
+      run(deps, userId, (ctx) => presentRecord(deps.db, object, updateRecord(ctx, object, id, values))),
   );
 
   server.registerTool(
@@ -156,7 +156,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
     async ({ actingUserId: userId, ...options }) =>
       run(deps, userId, (ctx) => {
         const result = queryRecords(ctx, options);
-        return { ...result, records: result.records.map((r) => withAttributes(options.object, r)) };
+        return { ...result, records: presentRecords(deps.db, options.object, result.records) };
       }),
   );
 
@@ -267,7 +267,8 @@ export function createMcpServer(deps: McpDeps): McpServer {
     },
     async ({ actingUserId: userId, opportunityId, stageName, amount, nextStep }) =>
       run(deps, userId, (ctx) =>
-        withAttributes(
+        presentRecord(
+          deps.db,
           'Opportunity',
           updateRecord(ctx, 'Opportunity', opportunityId, {
             StageName: stageName,

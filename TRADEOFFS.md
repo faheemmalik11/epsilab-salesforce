@@ -16,6 +16,12 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | Lead conversion in one SQLite transaction, including its mutation log entries and ID counters | The brief requires "a failure creates nothing"; a test forces a failure after the account and contact inserts |
 | One build entry point, `scripts/build-db.ts`: schema, verified seed import, then generated records | The importer and generator always run together in the same order, at image build |
 | Seed rows are bulk-inserted directly; generated records go through the service layer | The seed must be kept exactly as given, including mess the save rules would reject; generated records must pass every save rule |
+| The GUI port also serves the REST routes, so the browser calls the API on its own origin | No CORS between ports 3000 and 8080; both ports run the same route code over the same service layer and database connection |
+| The GUI holds no business rules: required fields, picklist checks, stage defaults and the Amount rule all come back from the API | AC5 needs identical errors; the GUI shows the API's `message` text verbatim, plus "Complete this field." beside required fields as Lightning does |
+| List view filters are "equals" on picklist fields, kept in the URL | Covers AC2 (Rating = Hot); shareable and reload-safe |
+| Lists load 50 rows at a time with infinite scroll, and show the exact total | AC2 asks the GUI to show 7,111 leads; Salesforce itself shows "50+ items" |
+| Relationship names (Owner, Account…) come from the API as nested objects, as in Salesforce relationship queries | Lists show names instead of IDs without extra requests |
+| The opportunity name in the Convert dialog is only sent when the user changes it | Otherwise the API applies Salesforce's documented default (the lead's Company) |
 | REST follows Salesforce shapes: create returns `201 { id, success, errors }`, PATCH and DELETE return 204, records carry `attributes` | Familiar to anyone who knows the Salesforce REST API |
 | Queries use `POST /api/query` with a JSON filter, not SOQL | A SOQL parser is out of scope for one day; the JSON form maps directly to the service query and the MCP tool |
 | MCP adds convenience tools (`log_call`, `create_task`, `add_contact_role`, `update_opportunity_stage`) beside generic CRUD | Easier for agents; each is a thin call into the same service functions |
@@ -23,13 +29,22 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 
 ## Stubbed
 
-None yet. The GUI is still the Phase 1 stack-check page; nothing on it suggests a working feature.
+Each stub is visibly marked in the UI with a **Stub** badge or "Not available in this trial".
+
+| Stub | Reason |
+|---|---|
+| Reports, Dashboards, Forecasts, Campaigns and Cases tabs (stub pages) | Out of scope in the brief; kept so the Sales app navigation matches Salesforce |
+| Global search box (disabled) | Search is not part of the brief's workflow |
+| App Launcher icon (inert) | Only the Sales app exists |
+| "Recently Viewed" and "All Open …" list views (disabled in the picker) | AC2 needs All Leads; All and My views are built |
+| New Event and Email tabs in the activity composer | Events and real email are out of scope in the brief |
 
 ## Skipped
 
 | Item | Reason |
 |---|---|
-| Converting a lead into an existing contact | The brief says conversion "creates a Contact" |
+| Converting a lead into an existing contact | The brief says conversion "creates a Contact"; the Convert dialog states this |
+| Inline editing, mass actions (Change Status, Change Owner) and record deletion in the GUI | Not needed by the brief's workflow; delete stays available through REST and MCP |
 | Attaching a conversion to an existing opportunity (`opportunityId`) | Not required by the lifecycle; the opportunity is optional and new |
 | Email notification on conversion | Real email sending is out of scope in the brief |
 
@@ -84,5 +99,8 @@ Each one is recorded with its source in `docs/reference/`.
 | Malformed JSON bodies return `JSON_PARSER_ERROR` | That's the REST-specific code Salesforce uses; it isn't in the SOAP StatusCode list we could read, so this is from memory |
 | Bad query paging returns `MALFORMED_QUERY`; an unknown operator returns `INVALID_QUERY_FILTER_OPERATOR` | Documented Salesforce codes |
 | `SEED_PROFILE` and `CLOCK` shape the baseline data at image build; at runtime `CLOCK` and `CLOCK_MODE` drive the app clock | The baseline is built once per image so start-up never writes; per-profile snapshots come with the reset work in Phase 8 |
+| The Lead path shows Open - Not Contacted, Working - Contacted, Closed - Not Converted, then Converted; seed statuses such as Prospecting show in the record but not as path steps | The seed's custom statuses have no defined order; the path covers the brief's workflow |
+| Home shows the acting user's open tasks and recently updated opportunities | The full Seller Home layout from the brief's screenshot is Phase 6b |
+| The acting user is chosen in the header and remembered in the browser | The brief allows "a header or a dropdown"; inactive users are listed but cannot be chosen |
 | Unknown paths with a file extension (such as `/favicon.ico`) return a 404 error array; extensionless paths serve the app shell | Missing assets must fail visibly instead of returning HTML with status 200 |
 | The favicon is a neutral local icon, not the Salesforce logo | Avoids using Salesforce branding assets |

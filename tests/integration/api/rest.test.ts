@@ -236,3 +236,25 @@ describe('acting user over REST (P6)', () => {
     expect(entry).toMatchObject({ operation: 'create', object: 'Account', actorId: jon });
   });
 });
+
+describe('relationships and current user', () => {
+  it('nests the owner and account names, as a Salesforce relationship query does', async () => {
+    const account = await h.rest('POST', '/api/sobjects/Account', { Name: 'Related Co' }, { 'x-user-id': jon });
+    const contact = await h.rest('POST', '/api/sobjects/Contact', { LastName: 'Nested', AccountId: account.body.id }, { 'x-user-id': jon });
+    const got = await h.rest('GET', `/api/sobjects/Contact/${contact.body.id}`);
+    expect(got.body.Account).toEqual({ attributes: { type: 'Account', url: `/api/sobjects/Account/${account.body.id}` }, Id: account.body.id, Name: 'Related Co' });
+    expect(got.body.Owner).toMatchObject({ Id: jon, Name: 'Jon Santiago' });
+    const listed = await h.rest('POST', '/api/query', { object: 'Contact', where: [{ field: 'Id', op: 'eq', value: contact.body.id }] });
+    expect(listed.body.records[0].Account.Name).toBe('Related Co');
+  });
+
+  it('gives null relationships for empty references', async () => {
+    const lead = await h.rest('POST', '/api/sobjects/Lead', { LastName: 'Plain', Company: 'Plain Co' });
+    expect((await h.rest('GET', `/api/sobjects/Lead/${lead.body.id}`)).body.ConvertedAccount).toBeNull();
+  });
+
+  it('reports who the request acts as', async () => {
+    expect((await h.rest('GET', '/api/users/current', undefined, { 'x-user-id': jon })).body).toMatchObject({ Id: jon, Name: 'Jon Santiago' });
+    expect((await h.rest('GET', '/api/users/current')).body.Name).toBe('Amy Sanford');
+  });
+});

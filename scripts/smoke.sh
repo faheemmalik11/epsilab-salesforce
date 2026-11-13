@@ -37,7 +37,7 @@ echo "== REST All Leads Hot: $(curl -fsS -H 'content-type: application/json' -d 
 echo "== MCP:  $(npx tsx tests/smoke/mcp-check.ts http://localhost:8080/mcp)"
 
 echo "== GUI (Playwright)"
-BASE_URL=http://localhost:3000 npx playwright test --reporter=line
+BASE_URL=http://localhost:3000 API_URL=http://localhost:8080 npx playwright test --reporter=line
 
 docker compose down >/dev/null
 

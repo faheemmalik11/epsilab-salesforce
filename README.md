@@ -2,7 +2,7 @@
 
 A working clone of the Salesforce Sales Cloud core (Lead, Account, Contact, Opportunity, Task, with seeded Users), with a GUI, a REST API and an MCP server on one shared service layer.
 
-Status: Phase 5 (REST API and MCP). The GUI is still the Phase 1 stack-check page. See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
+Status: Phase 6a (Lightning GUI for the full lifecycle). Phase 6b adds visual polish and the full Seller Home page. See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
 
 ## Run with Docker
 
@@ -20,6 +20,25 @@ docker compose up --build
 | MCP (Streamable HTTP, stateless) | http://localhost:8080/mcp |
 
 Configuration comes from environment variables (see `.env.example`): `GUI_PORT`, `API_PORT`, `SEED_PROFILE`, `CLOCK`, `CLOCK_MODE`, `DEFAULT_USER_ID`, `MCP_ALLOWED_HOSTS`.
+
+## GUI
+
+Salesforce Lightning Experience style, built with the Salesforce Lightning Design System, at desktop width. Pick the seeded user you act as from **Acting as** in the header.
+
+- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters and exact counts, New/Edit forms, record pages with Details, Related lists and Activity.
+- **Lead workflow:** Log a Call, Lead Status path, Convert (new or existing account, optional opportunity). Converted leads are read-only with links to the new records.
+- **Opportunity workflow:** stage path, the close dialog (Closed Won or Closed Lost), Contact Roles, tasks and Next Step.
+- Validation errors are the API's own messages.
+
+### Stubs (visibly marked in the UI)
+
+| Stub | Where |
+|---|---|
+| Reports, Dashboards, Forecasts, Campaigns, Cases | Navigation tabs, each opening a page marked "Not available in this trial" |
+| Global search | Disabled search box in the header |
+| App Launcher | Inert icon beside the app name |
+| Recently Viewed, All Open list views | Disabled entries in the list view picker |
+| New Event, Email | Disabled tabs in the activity composer |
 
 ## REST API
 
@@ -44,7 +63,7 @@ pnpm install
 pnpm build && pnpm build:db    # builds the server, the GUI and data/app.db
 pnpm start                     # GUI on :3000, REST and MCP on :8080
 pnpm test                      # unit and integration tests
-pnpm e2e                       # Playwright GUI tests
+pnpm e2e                       # Playwright GUI tests (starts its own server on ports 3100/8180 with a fresh database)
 scripts/smoke.sh               # full stack check inside the linux/amd64 container, online and offline
 ```
 

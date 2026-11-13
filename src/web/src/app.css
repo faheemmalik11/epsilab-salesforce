@@ -1,0 +1,53 @@
+/* Layout only: SLDS provides the visual design. */
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background: var(--slds-g-color-surface-1, #f3f3f3);
+}
+
+.app-shell {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.app-body {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+}
+
+.app-logo {
+  background: none;
+  width: auto;
+}
+
+.list-page {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.list-body {
+  flex: 1;
+  min-height: 0;
+  background: #fff;
+}
+
+.list-scroll {
+  height: 100%;
+}
+
+/* SLDS fixes the global header to the top; keep it in the flow so the navigation bar sits below it. */
+.app-shell .slds-global-header_container {
+  position: static;
+}
+
+/* The activity column is narrow at smaller desktop widths; let its composer tabs wrap. */
+.activity-tabs .slds-tabs_default__nav {
+  flex-wrap: wrap;
+}

@@ -1,6 +1,6 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { isObjectName, type ObjectName } from '../metadata/index.js';
-import { createdResult, describeObject, listObjects, withAttributes } from '../presenters.js';
+import { createdResult, describeObject, listObjects, presentRecord, presentRecords } from '../presenters.js';
 import { contextFor, type RuntimeDeps } from '../requestContext.js';
 import {
   convertLead,
@@ -59,6 +59,11 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
 
   app.get('/api/users', async () => listUsers(deps.db));
 
+  app.get('/api/users/current', async (request) => {
+    const { actingUserId } = ctx(request);
+    return listUsers(deps.db).find((u) => u.Id === actingUserId);
+  });
+
   app.get('/api/sobjects', async () => ({ sobjects: listObjects() }));
 
   app.get<{ Params: ObjectParams }>('/api/sobjects/:object/describe', async (request) =>
@@ -72,7 +77,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
 
   app.get<{ Params: RecordParams }>('/api/sobjects/:object/:id', async (request) => {
     const object = objectName(request.params.object);
-    return withAttributes(object, getRecord(ctx(request), object, request.params.id));
+    return presentRecord(deps.db, object, getRecord(ctx(request), object, request.params.id));
   });
 
   app.patch<{ Params: RecordParams }>('/api/sobjects/:object/:id', async (request, reply) => {
@@ -89,7 +94,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
     const options = body(request) as unknown as QueryOptions;
     const object = objectName(String(options.object));
     const result = queryRecords(ctx(request), { ...options, object });
-    return { ...result, records: result.records.map((r) => withAttributes(object, r)) };
+    return { ...result, records: presentRecords(deps.db, object, result.records) };
   });
 
   app.post<{ Params: { id: string } }>('/api/leads/:id/convert', async (request) =>
