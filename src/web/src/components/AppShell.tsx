@@ -7,6 +7,7 @@ import { iconHref } from '../icons';
 import { recordUrl } from './FieldOutput';
 import { ButtonIcon, Icon } from './Icon';
 import { Menu, type MenuSection } from './Menu';
+import { OUTLINE_ICONS } from './SidebarIcons';
 import { RecordForm } from './RecordForm';
 import { scopeTitle } from './Stub';
 
@@ -172,13 +173,13 @@ interface SidebarApp {
 /** The Lightning app rail, in the order a Sales org shows it. */
 const SIDEBAR_APPS: SidebarApp[] = [
   { label: 'Home', icon: 'home', to: '/lightning/page/home' },
-  { label: 'Contacts', icon: 'people', to: '/lightning/o/Contact/list' },
+  { label: 'Contacts', icon: 'groups', to: '/lightning/o/Contact/list' },
   { label: 'Accounts', icon: 'company', to: '/lightning/o/Account/list' },
-  { label: 'Sales', icon: 'chart', to: '/lightning/o/Lead/list' },
-  { label: 'Service', icon: 'heart' },
-  { label: 'Marketing', icon: 'target' },
-  { label: 'Commerce', icon: 'cart' },
-  { label: 'Your Account', icon: 'store' },
+  { label: 'Sales', icon: 'sales', to: '/lightning/o/Lead/list' },
+  { label: 'Service', icon: 'service' },
+  { label: 'Marketing', icon: 'marketing' },
+  { label: 'Commerce', icon: 'commerce' },
+  { label: 'Your Account', icon: 'account' },
   { label: 'Automation', icon: 'flow' },
 ];
 
@@ -200,9 +201,11 @@ function Sidebar() {
           const content = (
             <>
               <span className="app-sidebar__icon">
-                <svg aria-hidden="true">
-                  <use href={iconHref('utility', app.icon)} />
-                </svg>
+                {OUTLINE_ICONS[app.icon] ?? (
+                  <svg aria-hidden="true">
+                    <use href={iconHref('utility', app.icon)} />
+                  </svg>
+                )}
               </span>
               <span className="app-sidebar__label">{app.label}</span>
             </>
@@ -249,9 +252,12 @@ export function AppShell({ children }: { children: ReactNode }) {
       <header className="slds-global-header_container">
         <div className="slds-global-header slds-grid slds-grid_align-spread">
           <div className="slds-global-header__item">
-            <div className="slds-global-header__logo app-logo" aria-label="Sales">
-              <Icon name="opportunity" size="small" />
-            </div>
+            {/* SLDS's own cloud glyph (licensed with the SLDS icons), not Salesforce's logo file. */}
+            <Link to="/lightning/page/home" className="slds-global-header__logo app-logo" aria-label="Home" data-testid="app-logo">
+              <svg aria-hidden="true">
+                <use href={iconHref('utility', 'salesforce1')} />
+              </svg>
+            </Link>
           </div>
           <div className="slds-global-header__item slds-global-header__item_search">
             <div className="slds-form-element">

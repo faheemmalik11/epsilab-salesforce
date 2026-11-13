@@ -458,6 +458,13 @@ body,
   align-items: center;
 }
 
+/* Measured in the org: a light blue cloud about 42 by 30px at the left of the header. */
+.app-logo svg {
+  width: 3.5rem;
+  height: 2.5rem;
+  fill: #00a1e0;
+}
+
 .nav-object {
   align-items: center;
 }
@@ -1085,6 +1092,7 @@ body,
   width: 1.75rem;
   height: 1.75rem;
   fill: #fff;
+  color: #fff;
 }
 
 .app-sidebar__item:hover .app-sidebar__icon {

@@ -99,4 +99,6 @@ Inspected in the real org at 1854×927 (read-only).
 | Scope markers | n/a | **Changed:** one subtle "Not in scope" label or tooltip everywhere. No gray boxes, no "Stub" pills, no trial wording (`shell.spec.ts`, `convert.spec.ts`) |
 | Convert dialog fields | Account Name editable in the org | Shown as text (ours can't be renamed; it is the lead's Company). Unsupported options have no input box. Account Search is required only for Choose Existing, and Account Name only for Create New, with a "Complete this field." error |
 
-Remaining differences: the sidebar icons are SLDS glyphs rather than the org's app artwork; the lead page has no People Score, Consent, AI Summary, duplicates or Files panels; and the activity action buttons have no dropdown chevrons.
+Update: sidebar icons now match the org's subjects and outline style (SLDS home, groups, company, account and flow, plus drawn outline icons for Sales, Service, Marketing and Commerce), and the header shows SLDS's blue cloud glyph where the org has its logo. Out-of-scope sidebar items stay dimmed as their scope marking.
+
+Remaining differences: sidebar icons are close equivalents, not the org's own artwork; the lead page has no People Score, Consent, AI Summary, duplicates or Files panels; and the activity action buttons have no dropdown chevrons.
