@@ -196,6 +196,7 @@ The database uses the rollback journal (`journal_mode=DELETE`). Outside an open 
   5. Verify the sha256 *before reopening*.
   6. Reopen, release the lock, and return `{ sha256, matches, durationMs }`. The mutation log lives in the DB, so it's reset too.
 - **Proof** (`GET /api/admin/snapshot/verify`): under the lock, hash the working `.db` and compare it with the snapshot hash. As a second check, compare a per-table row-count and content digest. Reads don't modify the file.
+- **Finding from Phase 4:** SQLite bumps header bytes (file change counter) on every committed write transaction, even one whose savepoint was rolled back. After a reset, nothing may open a write transaction on the restored file before the hash is taken. Plain reads are safe.
 - **Determinism check**: build the baseline twice and compare hashes. It's informative only, since criterion #6 compares against the snapshot.
 - **Clock**: the env value can be fixed or ticking, and `GET/POST /api/admin/clock` reads or changes it. The service layer reads time only from `clock.ts`.
 

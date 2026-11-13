@@ -15,4 +15,4 @@ data/
 test-results/
 playwright-report/
 .DS_Store
-seed/
+/seed/

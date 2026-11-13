@@ -14,6 +14,8 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | STRICT SQLite tables named and columned exactly as the Salesforce API names | Storage types are enforced, and queries read like SOQL field names |
 | One generic record engine (`src/server/services/records/`) with small per-object rules | Validation, defaults, audit fields and the mutation log behave identically for every object and every surface |
 | Lead conversion in one SQLite transaction, including its mutation log entries and ID counters | The brief requires "a failure creates nothing"; a test forces a failure after the account and contact inserts |
+| One build entry point, `scripts/build-db.ts`: schema, verified seed import, then generated records | The importer and generator always run together in the same order, at image build |
+| Seed rows are bulk-inserted directly; generated records go through the service layer | The seed must be kept exactly as given, including mess the save rules would reject; generated records must pass every save rule |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
 ## Stubbed
@@ -66,5 +68,13 @@ Each one is recorded with its source in `docs/reference/`.
 | The runtime clock starts at `CLOCK` and advances with real time (`offset` mode); tests use `fixed` mode | Records get distinct, realistic timestamps while dates stay anchored to the seed's timeline |
 | Last Activity dates are not updated when tasks are logged | Not needed by the brief's workflow; listed as read-only behaviour |
 | Some documented standard fields are not modelled: Account AccountNumber, Site, TickerSymbol, Ownership; Opportunity ContactId, IsPrivate; Task Type, CallType, CallDurationInSeconds | None is needed by the workflow or the seed; adding one later is a metadata change |
+| Two seed leads with a blank Last Name are imported unchanged | The brief needs exactly 21,628 leads and the seed README says to keep the mess; Last Name is still required when a user saves them |
+| User audit references to a name that is not a seed user ("Tracy Hart") are stored as null and reported at build | The seed doesn't contain that user, so there's no ID to point at |
+| Seed user timestamps (`MM/DD/YYYY, hh:mm AM`) are read as UTC | The export doesn't say which time zone they're in |
+| The importer refuses a database that already holds seed data; rebuilding is how to re-import | Re-running never duplicates rows; two builds from the same seed are byte-identical |
+| The Phase 4 generated set is small (5 accounts, 10 contacts, 5 opportunities, 5 contact roles, 8 tasks) | It exists so the lifecycle can attach to existing accounts; volume and realistic mess come in Phase 7, the brief's lowest priority |
+| Generated accounts use the names of companies shared by several seed leads, and contacts reuse those leads' (pseudonymized) names | Gives the "attach to an existing account" conversion path realistic matches |
+| Generated data never creates, edits or converts a lead, and adds no tasks to seed leads | Keeps the 21,628 and 7,111 counts exact and the seed rows untouched |
+| The mutation log is emptied at the end of the build | The baseline has no history; the log shows changes since the last build or reset |
 | Unknown paths with a file extension (such as `/favicon.ico`) return a 404 error array; extensionless paths serve the app shell | Missing assets must fail visibly instead of returning HTML with status 200 |
 | The favicon is a neutral local icon, not the Salesforce logo | Avoids using Salesforce branding assets |

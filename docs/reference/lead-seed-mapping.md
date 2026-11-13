@@ -11,7 +11,7 @@ Every column was profiled against `seed/leads.csv` (21,628 rows) on 2026-11-13.
 | Seed column | API field | Transform | Seed profile |
 |---|---|---|---|
 | Lead ID | Id | Keep verbatim (18-char, 00Q) | Unique |
-| Last Name | LastName | `-` → null | 6,648 placeholders "No Name" in 3 spellings, kept [SEED] |
+| Last Name | LastName | `-` → null | 6,648 placeholders "No Name" (5 casings in the data, although the seed README says 3), kept. 2 leads have a blank Last Name and are imported as-is [SEED] |
 | First Name | FirstName | `-` → null | 4,224 blank |
 | Salutation | Salutation | Verbatim | Variants `Mr`, `Mr.`, `Mr..`, `Ms`, `Ms.`, `Mrs.` |
 | Title | Title | Verbatim | Mixed case; 12 cells hold an email address |
@@ -19,7 +19,7 @@ Every column was profiled against `seed/leads.csv` (21,628 rows) on 2026-11-13.
 | Email | Email | Verbatim | `@example.invalid` |
 | Phone / Mobile / Fax | Phone / MobilePhone / Fax | Verbatim | |
 | Website | Website | Verbatim | |
-| Street | Street | Verbatim (it may contain a newline) | Equals `Street Line 1` on 21,622 rows; the other 6 contain lines 1 and 2 |
+| Street | Street | Verbatim | Equals `Street Line 1` on 21,622 rows; the other 6 contain lines 1 and 2 (no newlines in the data) |
 | City | City | | |
 | State/Province | State | | Identical to the "(text only)" column on all rows |
 | Zip/Postal Code | PostalCode | | Always `00000` |
@@ -29,7 +29,7 @@ Every column was profiled against `seed/leads.csv` (21,628 rows) on 2026-11-13.
 | Lead Source | LeadSource | Verbatim | 22 values, 98 blank |
 | Industry | Industry | | Blank on all rows |
 | Annual Revenue | AnnualRevenue | `$457,000` → 457000 | 247 blank |
-| No. of Employees | NumberOfEmployees | int | |
+| No. of Employees | NumberOfEmployees | int; thousands separators removed (`1,250` → 1250) | 242 blank |
 | Description | Description | | 13 non-blank (email addresses) |
 | Converted | IsConverted | `feature included` → true | All false |
 | Unread By Owner | IsUnreadByOwner | boolean | 21,627 true, 1 false |
@@ -68,7 +68,8 @@ The importer records the dropped columns in its log, so the drop is visible rath
 | Title | Title (blank on all) |
 | Profile | ProfileName (text; profiles are out of scope) |
 | Time Zone / Locale / Language | TimeZoneSidKey / LocaleSidKey / LanguageLocaleKey, as label text |
-| Created Date, Last Modified Date, Last Login | CreatedDate, LastModifiedDate, LastLoginDate (`MM/DD/YYYY, hh:mm AM`) |
+| Created Date, Last Modified Date, Last Login | CreatedDate, LastModifiedDate, LastLoginDate (`MM/DD/YYYY, hh:mm AM`, read as UTC) |
+| Created By, Last Modified By | CreatedById, LastModifiedById, resolved by full name. Two users name "Tracy Hart", who is not a seed user, as Last Modified By; stored as null and reported by the build |
 | *All other columns* (address, delegated approver, marketing/knowledge flags, password expiry, …) | Dropped. Not needed for ownership or the acting-user switch |
 
 [DECISION] Inactive users can't be chosen as the owner of a new or reassigned record. They still display as the owner of existing records. That follows Salesforce's documented rule that inactive users can't own new records; it's from memory, not a page we read, and it's low risk.
