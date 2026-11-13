@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import Database from 'better-sqlite3';
+import { createSchema } from './schema.js';
 
 interface SeedManifest {
   fixture: string;
@@ -19,7 +20,7 @@ export function buildDatabase(dbFile: string, seedDir: string): void {
   const db = new Database(dbFile);
   try {
     db.pragma('journal_mode = DELETE');
-    db.exec('CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT NOT NULL)');
+    createSchema(db);
     const insert = db.prepare('INSERT INTO meta (key, value) VALUES (?, ?)');
     db.transaction(() => {
       insert.run('fixture', manifest.fixture);

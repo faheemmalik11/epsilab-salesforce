@@ -32,8 +32,8 @@ Update the **Status** column as work lands: ☐ not started, ◐ in progress, �
 
 | ID | Requirement (verbatim) | Verified by | Status |
 |---|---|---|---|
-| P1 | "Model these as Salesforce does, using standard field names, picklist values and relationships." | Metadata reviewed against `docs/reference/objects-and-fields.md` and `picklists.md` | ☐ |
-| P2 | "Use Salesforce-style 18-character IDs with the standard key prefixes (001 Account, 003 Contact, 00Q Lead, 006 Opportunity, 00T Task, 005 User)." | `tests/ids.test.ts`: prefix and checksum for generated IDs; seed IDs preserved; checksum check over all seed IDs | ☐ |
+| P1 | "Model these as Salesforce does, using standard field names, picklist values and relationships." | Metadata reviewed against `docs/reference/objects-and-fields.md` and `picklists.md` | ◐ Metadata for all 7 objects in `src/server/metadata/`, checked by `tests/unit/metadata.test.ts` (Phase 2) |
+| P2 | "Use Salesforce-style 18-character IDs with the standard key prefixes (001 Account, 003 Contact, 00Q Lead, 006 Opportunity, 00T Task, 005 User)." | `tests/ids.test.ts`: prefix and checksum for generated IDs; seed IDs preserved; checksum check over all seed IDs | ◐ Checksum verified on all 21,637 seed IDs; generated IDs valid and deterministic (`tests/unit/ids.test.ts`, `tests/integration/schema.test.ts`, Phase 2). Preserving seed IDs is checked in Phase 4 |
 | P3 | "Target Salesforce Lightning Experience, desktop width." | AC7 review at 1440×900 | ☐ |
 | P4 | "The API and MCP tools call the same service layer as the GUI, with the same validation and the same structured errors." | Architecture: the GUI uses the REST API, and REST and MCP call `services/*`. AC5 parity tests | ☐ |
 | P5 | "You'll create a deterministic synthetic-data generator that, given the seed, produces the rest of the data … Include realistic mess: near-duplicate accounts, stale opportunities and missing optional fields." | `tests/generate.test.ts`: two runs give identical output (hash); assertions that near-duplicate accounts, stale open opportunities and null optional fields exist | ☐ |

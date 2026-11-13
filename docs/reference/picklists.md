@@ -34,7 +34,7 @@ Hot, Warm, Cold. The seed uses exactly these, plus blank [SEED].
 
 ## Lead Source
 
-- [SF-DOC] Defaults: Advertisement, Employee Referral, External Referral, Partner, Public Relations, Seminar - Internal, Seminar - Partner, Trade Show, Web, Word of mouth, Other.
+- [SF-DOC] Defaults: Advertisement, Employee Referral, External Referral, Partner, Public Relations, Seminar Internal, Seminar Partner, Trade Show, Web, Word of mouth, Other.
 - [SEED] 22 distinct values.
 - [DECISION] Picklist = the union of the seed values and the defaults, with seed values verbatim. The same list applies to Contact.LeadSource and Opportunity.LeadSource.
 

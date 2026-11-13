@@ -10,6 +10,8 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | SQLite (`better-sqlite3`) with the default rollback journal, not WAL | One file outside write transactions, so reset is a file copy with a direct byte-identical check |
 | MCP over stateless Streamable HTTP (SDK v2) | It's the SDK's documented Fastify pattern and needs no session store |
 | The GUI also mounts the REST routes on its own port | The browser calls the API on its own origin, so there's no CORS between ports |
+| One declarative definition per object in `src/server/metadata/` drives the schema, and later validation, API, MCP and GUI forms | A single source keeps all surfaces consistent |
+| STRICT SQLite tables named and columned exactly as the Salesforce API names | Storage types are enforced, and queries read like SOQL field names |
 
 ## Stubbed
 
@@ -44,3 +46,9 @@ Each one is recorded with its source in `docs/reference/`.
 | The All Leads view excludes converted leads | Salesforce hides converted leads from the Leads tab |
 | Inactive users can't own new records but still show as owners of existing ones | Matches Salesforce; two seed users are inactive |
 | `seed/` is gitignored in this working repo and copied by `scripts/fetch-seed.sh` | The seed is real company data; the reviewer repo already contains it |
+| Lead Status, Stage, Forecast Category, Contact Role and Task Status/Priority/Subtype are restricted picklists; Rating, Lead Source, Salutation, Industry and Type are not | The business rules depend on the restricted ones; the others hold descriptive values, and the seed has variants to keep |
+| Generated IDs use pod characters `SB0` plus a base-62 counter stored in the database | Deterministic across builds, and they can't collide with the seed's real IDs |
+| Referential integrity is checked in the service layer, not with SQLite foreign keys | Task.WhoId and Task.WhatId are polymorphic, and the service returns Salesforce-style errors |
+| Name on Lead, Contact and User is stored, and kept in sync by the service layer | List views sort and search by it without computing it per row |
+| List sorting on text is case-insensitive (NOCASE) | Salesforce list views sort case-insensitively |
+| Account Type uses the 10 standard values; the help article's extra "Consulting" entry is left out | It appears at the boundary with the Industry list and looks like a formatting artefact |
