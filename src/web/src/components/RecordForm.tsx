@@ -2,15 +2,15 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api, ApiError } from '../api/client';
 import { useDescribe, refreshRecords } from '../api/hooks';
-import type { FieldDescribe, ObjectName, RelatedRef } from '../api/types';
+import type { FieldDescribe, ObjectName } from '../api/types';
 import { useActingUser } from '../context/ActingUser';
 import { LAYOUTS, recordTitle, type TabObject } from '../lib/layouts';
 import { FieldInput, type FormValue } from './FieldInput';
+import { initialValue, toApiValue } from '../lib/formValues';
 import { Modal } from './Modal';
 import { PageError } from './PageError';
 import { useToast } from './Toast';
 
-const NUMERIC = new Set(['int', 'double', 'currency', 'percent']);
 const SYSTEM_FIELDS = new Set(['CreatedById', 'CreatedDate', 'LastModifiedById', 'LastModifiedDate']);
 /** Lightning groups these under one required "Name" label (the Name compound field). */
 const NAME_PARTS = ['Salutation', 'FirstName', 'LastName'];
@@ -23,29 +23,6 @@ interface RecordFormProps {
   initial?: Record<string, FormValue>;
   onClose(): void;
   onSaved(id: string): void;
-}
-
-function initialValue(field: FieldDescribe, record: Record<string, unknown>): FormValue {
-  const raw = record[field.name];
-  if (raw === null || raw === undefined) return field.type === 'boolean' ? false : null;
-  if (field.type === 'reference') {
-    const related = record[field.name.replace(/Id$/, '')] as RelatedRef | null;
-    return related ? { id: related.Id, name: related.Name ?? related.Id, object: related.attributes.type } : null;
-  }
-  if (field.type === 'boolean') return raw === true;
-  return String(raw);
-}
-
-/** Converts a form value to the JSON the API expects. Validation itself happens in the API. */
-function toApiValue(field: FieldDescribe, value: FormValue): unknown {
-  if (value === null || value === '') return null;
-  if (typeof value === 'object') return value.id;
-  if (typeof value === 'boolean') return value;
-  if (NUMERIC.has(field.type)) {
-    const number = Number(value);
-    return Number.isNaN(number) ? value : number;
-  }
-  return value;
 }
 
 /** Replaces the run of name parts with one group, so they render as the Name compound field. */

@@ -1,10 +1,14 @@
 import { useState, type ReactNode } from 'react';
-import { Link, useParams } from 'react-router';
+import { Link, useNavigate, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api/client';
+import { api, ApiError } from '../api/client';
 import { useDescribe, useRecord, useRecordQuery, refreshRecords } from '../api/hooks';
 import type { FieldDescribe, SRecord } from '../api/types';
-import { ActivityPanel } from '../components/ActivityPanel';
+import { ActivityPanel, type Composer } from '../components/ActivityPanel';
+import { FieldInput, type FormValue } from '../components/FieldInput';
+import { Menu, type MenuItem } from '../components/Menu';
+import { ChangeOwnerModal, DeleteRecordModal } from '../components/RecordActions';
+import { changedFields, initialValue, toApiValue } from '../lib/formValues';
 import { CloseStageModal } from '../components/CloseStageModal';
 import { ContactRoleModal } from '../components/ContactRoleModal';
 import { ConvertLeadModal } from '../components/ConvertLeadModal';
@@ -120,10 +124,10 @@ function Highlights({ layout, record, fields }: { layout: Layout; record: SRecor
 
 const NAME_PARTS = ['Salutation', 'FirstName', 'LastName'];
 
-function DetailRow({ label, testId, onEdit, wide, children }: { label: string; testId: string; onEdit?(): void; wide?: boolean; children: ReactNode }) {
+function DetailRow({ label, testId, onEdit, wide, edited, children }: { label: string; testId?: string; onEdit?(): void; wide?: boolean; edited?: boolean; children: ReactNode }) {
   return (
     <div className={`slds-col slds-p-horizontal_small ${wide ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
-      <div className="slds-form-element slds-form-element_readonly slds-form-element_stacked detail-row">
+      <div className={`slds-form-element slds-form-element_readonly slds-form-element_stacked detail-row ${edited ? 'detail-row_edited' : ''}`}>
         <span className="slds-form-element__label">{label}</span>
         <div className="slds-form-element__control">
           <div className="slds-form-element__static" data-testid={testId}>
@@ -131,7 +135,7 @@ function DetailRow({ label, testId, onEdit, wide, children }: { label: string; t
           </div>
         </div>
         {onEdit && (
-          <button type="button" className="slds-button slds-button_icon detail-row__edit" title={`Edit ${label}`} onClick={onEdit}>
+          <button type="button" className="slds-button slds-button_icon detail-row__edit" title={`Edit ${label}`} data-testid={`inline-edit-${testId?.replace('detail-', '')}`} onClick={onEdit}>
             <ButtonIcon name="edit" />
             <span className="slds-assistive-text">Edit {label}</span>
           </button>
@@ -141,48 +145,132 @@ function DetailRow({ label, testId, onEdit, wide, children }: { label: string; t
   );
 }
 
-/** Detail sections; the pencil on an editable field opens the Edit form, as inline edit's entry point. */
-function Details({ layout, record, fields, onEdit }: { layout: Layout; record: SRecord; fields: Map<string, FieldDescribe>; onEdit?(): void }) {
+/** The run of name parts in a section, collapsed into one entry for the Name compound field. */
+function sectionEntries(names: string[]): (string | string[])[] {
+  const parts = names.filter((n) => NAME_PARTS.includes(n));
+  if (parts.length < 2) return names;
+  const first = names.indexOf(parts[0]!);
+  const rest = names.filter((n) => !NAME_PARTS.includes(n));
+  return [...rest.slice(0, first), parts, ...rest.slice(first)];
+}
+
+/**
+ * Detail sections with Lightning inline edit: a pencil switches the whole panel into edit mode, changed
+ * fields are highlighted, and the sticky footer saves only the changed fields through the update API.
+ */
+function Details({ layout, label, record, fields, editable }: { layout: Layout; label: string; record: SRecord; fields: Map<string, FieldDescribe>; editable: boolean }) {
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [values, setValues] = useState<Record<string, FormValue> | null>(null);
+  const [focusField, setFocusField] = useState<string | null>(null);
+  const editing = values !== null;
+  const canEdit = (field: FieldDescribe | undefined) => !!field && field.updateable;
+  const valueOf = (field: FieldDescribe) => (values && field.name in values ? values[field.name]! : initialValue(field, record));
+  const isEdited = (field: FieldDescribe) =>
+    !!values && field.name in values && toApiValue(field, values[field.name] ?? null) !== toApiValue(field, initialValue(field, record));
+
+  const save = useMutation({
+    mutationFn: () => api.update(record.attributes.type, record.Id, changedFields([...fields.values()], record, values ?? {})),
+    onSuccess: async () => {
+      await refreshRecords(queryClient);
+      toast(`${label} "${recordTitle(record)}" was saved.`);
+      setValues(null);
+    },
+  });
+  const error = save.error instanceof ApiError ? save.error : null;
+  const fieldErrors = (name: string) =>
+    (error?.fieldErrors(name) ?? []).map((e) => (e.errorCode === 'REQUIRED_FIELD_MISSING' ? 'Complete this field.' : e.message));
+  const startEdit = (name: string) => {
+    setFocusField(name);
+    setValues(values ?? {});
+  };
+  const cancel = () => {
+    setValues(null);
+    save.reset();
+  };
+
+  const input = (field: FieldDescribe) => (
+    <div key={field.name} className={isEdited(field) ? 'detail-input_edited' : ''}>
+      <FieldInput
+        field={field}
+        value={valueOf(field)}
+        required={field.required}
+        errors={fieldErrors(field.name)}
+        autoFocus={focusField === field.name}
+        onChange={(value) => setValues({ ...values, [field.name]: value })}
+      />
+    </div>
+  );
+
   return (
-    <>
-      {layout.sections.map((section) => {
-        const names = section.fields.filter((name) => fields.has(name));
-        const hasName = NAME_PARTS.filter((n) => names.includes(n)).length > 1;
-        const shown = hasName ? names.filter((n, i) => !NAME_PARTS.includes(n) || i === names.findIndex((m) => NAME_PARTS.includes(m))) : names;
-        return (
-          <div key={section.title} className="slds-section slds-is-open">
-            <h3 className="slds-section__title slds-theme_shade">
-              <ButtonIcon name="chevrondown" />
-              <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
-            </h3>
-            <div className="slds-section__content slds-grid slds-wrap">
-              {shown.map((name) => {
-                if (hasName && NAME_PARTS.includes(name)) {
-                  const full = NAME_PARTS.map((n) => record[n]).filter(Boolean).join(' ');
+    <div className={editing ? 'details_editing' : ''} data-testid={editing ? 'details-edit-mode' : undefined}>
+      {layout.sections.map((section) => (
+        <div key={section.title} className="slds-section slds-is-open">
+          <h3 className="slds-section__title slds-theme_shade">
+            <ButtonIcon name="chevrondown" />
+            <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
+          </h3>
+          <div className="slds-section__content slds-grid slds-wrap">
+            {sectionEntries(section.fields.filter((name) => fields.has(name))).map((entry) => {
+              if (Array.isArray(entry)) {
+                const parts = entry.map((n) => fields.get(n)!);
+                if (editing && parts.some(canEdit)) {
                   return (
-                    <DetailRow key="Name" label="Name" testId="detail-Name" onEdit={onEdit}>
-                      {full}
-                    </DetailRow>
+                    <div key="Name" className="slds-col slds-p-horizontal_small slds-size_1-of-2 detail-edit">
+                      <fieldset className="slds-form-element slds-form-element_compound">
+                        <legend className="slds-form-element__legend slds-form-element__label">Name</legend>
+                        {parts.filter(canEdit).map(input)}
+                      </fieldset>
+                    </div>
                   );
                 }
-                const field = fields.get(name)!;
+                const full = entry.map((n) => record[n]).filter(Boolean).join(' ');
                 return (
-                  <DetailRow
-                    key={name}
-                    label={field.label}
-                    testId={`detail-${name}`}
-                    wide={field.type === 'textarea'}
-                    onEdit={field.updateable ? onEdit : undefined}
-                  >
-                    <FieldOutput field={field} record={record} />
+                  <DetailRow key="Name" label="Name" testId="detail-Name" onEdit={editable && parts.some(canEdit) ? () => startEdit('FirstName') : undefined}>
+                    {full}
                   </DetailRow>
                 );
-              })}
-            </div>
+              }
+              const field = fields.get(entry)!;
+              if (editing && canEdit(field)) {
+                return (
+                  <div key={entry} className={`slds-col slds-p-horizontal_small detail-edit ${field.type === 'textarea' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
+                    {input(field)}
+                  </div>
+                );
+              }
+              return (
+                <DetailRow
+                  key={entry}
+                  label={field.label}
+                  testId={`detail-${entry}`}
+                  wide={field.type === 'textarea'}
+                  onEdit={editable && canEdit(field) ? () => startEdit(entry) : undefined}
+                >
+                  <FieldOutput field={field} record={record} />
+                </DetailRow>
+              );
+            })}
           </div>
-        );
-      })}
-    </>
+        </div>
+      ))}
+      {editing && (
+        <div className="details-footer" data-testid="details-footer">
+          {save.error && (
+            <div className="inline-edit-errors" role="alert">
+              <h2>We hit a snag.</h2>
+              <p>{save.error.message}</p>
+            </div>
+          )}
+          <button type="button" className="slds-button slds-button_neutral" data-testid="details-cancel" onClick={cancel}>
+            Cancel
+          </button>
+          <button type="button" className="slds-button slds-button_brand" data-testid="details-save" disabled={save.isPending} onClick={() => save.mutate()}>
+            Save
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
@@ -269,6 +357,10 @@ export function RecordPage() {
   const [editing, setEditing] = useState(false);
   const [converting, setConverting] = useState(false);
   const [tab, setTab] = useState<'details' | 'related'>('details');
+  const [composer, setComposer] = useState<Composer | null>(null);
+  const [changingOwner, setChangingOwner] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const navigate = useNavigate();
 
   if (!layout) return <PageError error={new Error('Unknown object')} />;
   if (record.error) return <div className="slds-p-around_medium"><PageError error={record.error} /></div>;
@@ -289,7 +381,19 @@ export function RecordPage() {
     ...(object === 'Lead' && !converted
       ? [{ id: 'convert-lead', label: 'Convert', run: () => setConverting(true) }]
       : []),
+    ...(!converted && 'OwnerId' in data ? [{ id: 'change-owner', label: 'Change Owner', run: () => setChangingOwner(true) }] : []),
     ...(!converted ? [{ id: 'edit-record', label: 'Edit', run: () => setEditing(true) }] : []),
+  ];
+  const canLogActivity = !!layout.activityField && !converted;
+  const moreActions: MenuItem[] = [
+    ...(canLogActivity
+      ? [
+          { id: 'event', label: 'New Event', stub: true },
+          { id: 'call', label: 'Log a Call', testId: 'more-log-call', onSelect: () => setComposer('call') },
+          { id: 'task', label: 'New Task', testId: 'more-new-task', onSelect: () => setComposer('task') },
+        ]
+      : []),
+    { id: 'delete', label: 'Delete', testId: 'more-delete', onSelect: () => setDeleting(true) },
   ];
   const hasPath = (object === 'Lead' && !converted) || (object === 'Opportunity' && !!stageField);
 
@@ -308,17 +412,28 @@ export function RecordPage() {
               </h1>
             </div>
           </div>
-          {actions.length > 0 && (
-            <ul className="slds-button-group-list">
-              {actions.map((action) => (
-                <li key={action.id}>
-                  <button type="button" className="slds-button slds-button_neutral" data-testid={action.id} onClick={action.run}>
-                    {action.label}
+          <ul className="slds-button-group-list">
+            {actions.map((action) => (
+              <li key={action.id}>
+                <button type="button" className="slds-button slds-button_neutral" data-testid={action.id} onClick={action.run}>
+                  {action.label}
+                </button>
+              </li>
+            ))}
+            <li>
+              <Menu
+                align="right"
+                testId="more-actions-menu"
+                sections={[{ items: moreActions }]}
+                trigger={(props) => (
+                  <button {...props} type="button" className="slds-button slds-button_icon-border-filled record-more" title="Show more actions" data-testid="more-actions">
+                    <ButtonIcon name="down" />
+                    <span className="slds-assistive-text">Show more actions</span>
                   </button>
-                </li>
-              ))}
-            </ul>
-          )}
+                )}
+              />
+            </li>
+          </ul>
         </div>
         <Highlights layout={layout} record={data} fields={fields} />
       </div>
@@ -357,7 +472,7 @@ export function RecordPage() {
             </ul>
             <div className="slds-tabs_default__content slds-show" role="tabpanel">
               {tab === 'details' ? (
-                <Details layout={layout} record={data} fields={fields} onEdit={converted ? undefined : () => setEditing(true)} />
+                <Details key={data.Id} layout={layout} label={describe.data.label} record={data} fields={fields} editable={!converted} />
               ) : (
                 layout.related.map((list) => <RelatedCard key={list.title} list={list} parent={data} />)
               )}
@@ -366,13 +481,15 @@ export function RecordPage() {
         </div>
         {layout.activityField && (
           <div className="record-columns__side">
-            <ActivityPanel record={data} link={layout.activityField} readOnly={converted} />
+            <ActivityPanel record={data} link={layout.activityField} readOnly={converted} composer={composer} onComposerChange={setComposer} />
           </div>
         )}
       </div>
 
       {editing && <RecordForm object={object} record={data} onClose={() => setEditing(false)} onSaved={() => setEditing(false)} />}
       {converting && <ConvertLeadModal lead={data} onClose={() => setConverting(false)} />}
+      {changingOwner && <ChangeOwnerModal record={data} onClose={() => setChangingOwner(false)} />}
+      {deleting && <DeleteRecordModal record={data} onClose={() => setDeleting(false)} onDeleted={() => navigate(`/lightning/o/${object}/list`)} />}
     </div>
   );
 }

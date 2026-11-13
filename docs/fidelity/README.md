@@ -40,6 +40,27 @@ Recreate ours with `pnpm build && node scripts/capture-screens.mjs docs/fidelity
   - The Path sits full width in its own panel.
 - **Inputs:** 32px tall, 8px radius, a #5c5c5c border, and a single chevron on picklists. Labels are 13px/600 #2e2e2e.
 
+## Verified matches
+
+Each row was compared against the real org at the same viewport (1854×927) and checked by Playwright where it's behaviour. Our 1440×900 captures are in `after/`, and the 1854×927 ones in `after-1854x927/`; both are local only. Run `node scripts/capture-screens.mjs <dir> --viewport 1854x927` to recreate them.
+
+| Area | What matches | Test |
+|---|---|---|
+| Object tab menus | Chevron menu with "+ New …", Recent records (live), Recent lists (All and My), "Open … in New Tab". Measured placement, 8px radius, `shadow-2`, 34px items in 12px #2e2e2e, section dividers, #d6e6ff hover. Arrow keys, Home/End, Escape (focus returns to the chevron), Tab and a click outside close it | `interactions.spec.ts` "object tab menus" |
+| Nav underline | Active tab: 3px #0250d9, kept while hovered. Hovered tab: 3px #001e5b | "nav underline" |
+| Lead list inline edit | Pencil on hover; popover editor; Escape restores, Enter or a click outside keeps the value. Edited cell in #fbf3e0 at 600 weight. Docked Cancel / Save bar. Each row saved through PATCH; failed rows keep their edits, with an error icon and "We hit a snag." showing the API's message | "list inline edit" |
+| Row actions | Edit, Delete (confirmation dialog), Change Owner (dialog), Edit Labels (marked stub) | "row actions" |
+| Column menu | Wrap text / Clip text, with the current choice checked | "column menus" |
+| List view picker | "Search lists..." box, List Views header, current view checked, stub views marked | "column menus" |
+| Table | 32px #f3f3f3 header, 38px rows, #f3f3f3 row hover with a white hovered cell, #e5e5e5 row dividers, #c9c9c9 table bottom, transparent card border | Screenshots 02 and 15 |
+| Record inline edit | Pencil switches the details panel to edit mode, with the field focused, changed fields highlighted, and a sticky Cancel / Save footer. Errors appear under the fields and in "We hit a snag." | "record inline edit" |
+| Record header | Convert / Change Owner / Edit plus the overflow menu (New Event stub, Log a Call, New Task, Delete) | "record inline edit" |
+| Docked composer | Log a Call and New Task open a window at the bottom right, with icon, title, minimize, close, fields, a Name / Related To pill and Save | "record inline edit", `lifecycle.spec.ts` |
+| Activity timeline | "Upcoming & Overdue" (overdue dates in red), then month groups, each collapsible | `tests/unit/timeline.test.ts` |
+| Seller Home Today's Tasks | Filter menu (Today's, Overdue, All Open) and a checkbox that completes the task | "Seller Home task filters" |
+| Focus and cursor | No outline or ring after a mouse click anywhere; keyboard focus keeps a ring. Everything clickable shows the pointer; disabled controls don't | Manual check |
+| From the first pass | Theme tokens, buttons (hover lift, press, disabled), spinner, modal fade and blur, toast, Path colours, New / Edit modal, Convert dialog | See above |
+
 ## Surface by surface
 
 | # | Surface | Reference | Result |
@@ -59,7 +80,6 @@ Recreate ours with `pnpm build && node scripts/capture-screens.mjs docs/fidelity
 |---|---|
 | The logo is a neutral icon, not the Salesforce cloud; there are no utility icons at the right of the header | Salesforce branding isn't copied; setup, help and notifications are out of scope |
 | Stub tabs and cards carry a small "Stub" badge | The brief requires stubs to be visibly marked |
-| Navigation tab chevrons open no menu | Recent-item menus are out of scope (see `TRADEOFFS.md`) |
 | The object header icon is the SLDS sprite glyph, not Salesforce's PNG | The sprite is the licensed SLDS asset; the shape and colour match |
 | Account Name in the Convert dialog is read-only | The convert API names the account after the lead's Company |
 | Choose Existing Contact and Opportunity are disabled stubs | Not in the brief's workflow |
@@ -67,4 +87,9 @@ Recreate ours with `pnpm build && node scripts/capture-screens.mjs docs/fidelity
 | Lightning shows "50+ items"; we show the exact count | AC2 needs the exact 7,111 |
 | Field labels in our detail sections follow standard Sales layouts (two columns) | The org uses a single-column Starter layout |
 | Lightning's record pages load with gray "stencil" placeholders; ours show the brand spinner | The spinner is the same component Lightning uses for list and modal loads |
+| "Recent records" in the nav menus are the most recently modified records, not the user's view history | There is no view tracking; changed records are real data |
+| The Leads list header lacks Import, Add to Campaign, Send Email and Add to an Actionable List | Out of scope; leaving them out avoids a row of stubs |
+| Lightning's composer Subject is a combobox of suggested subjects; the task form has Assigned To and Related To pickers | Our composer keeps Subject, Comments or Due Date, and the record it belongs to; the assignee is the acting user |
+| Add Contact Roles adds one contact at a time | Lightning picks several contacts first; the brief needs one role per call |
+| Our org comparison viewport is 1854×927, not 1440×900 | The org window was maximized and Chrome ignored resizing; our app was captured at both sizes |
 | Org-only elements (trial banner, left icon rail, People Score, Consent, AI Summary, Agentforce, Slack, "Ask") are absent | Org-specific or out of scope |

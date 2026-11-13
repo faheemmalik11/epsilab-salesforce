@@ -37,11 +37,13 @@ test('L1-L5: a lead is created, worked, converted, progressed and Closed Won in 
   const leadId = recordId(page);
   expect(await restGet(api, 'Lead', leadId)).toMatchObject({ Status: 'Open - Not Contacted', Company: 'Navy Compilers' });
 
+  await page.getByTestId('composer-call').click();
   await page.locator('#call-comments').fill('Discussed compiler needs');
   await page.getByTestId('activity-save').click();
+  await expect(page.getByTestId('docked-composer')).toHaveCount(0);
   await expect(page.getByTestId('timeline-item')).toHaveCount(1);
   await expect(page.getByTestId('timeline-item')).toContainText('Call');
-  await expect(page.getByTestId('timeline-item')).toContainText('Completed');
+  await expect(page.getByTestId('timeline-item')).toContainText('You logged a call');
 
   await selectPathStep(page, 'Working - Contacted');
   await expect(page.getByTestId('detail-Status')).toHaveText('Working - Contacted');

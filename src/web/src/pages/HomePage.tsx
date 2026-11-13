@@ -1,14 +1,16 @@
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import eventsArt from '@salesforce-ux/design-system/assets/images/illustrations/empty-state-events.svg?url';
 import tasksArt from '@salesforce-ux/design-system/assets/images/illustrations/empty-state-tasks.svg?url';
 import goalsArt from '@salesforce-ux/design-system/assets/images/illustrations/empty-state-assistant.svg?url';
 import { api } from '../api/client';
-import { useClock, useRecordQuery } from '../api/hooks';
+import { refreshRecords, useClock, useRecordQuery } from '../api/hooks';
 import type { ObjectName, SRecord } from '../api/types';
 import { recordUrl } from '../components/FieldOutput';
-import { Icon } from '../components/Icon';
+import { ButtonIcon, Icon } from '../components/Icon';
+import { Menu } from '../components/Menu';
+import { useToast } from '../components/Toast';
 import { STUB_TEXT, StubBadge } from '../components/Stub';
 import { useActingUser } from '../context/ActingUser';
 import { formatValue } from '../lib/format';
@@ -18,14 +20,15 @@ import { classifyPipeline, pipelineWindowStart, type PipelineTask } from '../lib
 const RECENT_OBJECTS: ObjectName[] = ['Lead', 'Account', 'Contact', 'Opportunity'];
 const PIPELINE_PAGE = 200;
 
-function HomeCard({ title, testId, footer, stub, children }: { title: string; testId: string; footer?: ReactNode; stub?: boolean; children: ReactNode }) {
+function HomeCard({ title, testId, footer, stub, action, children }: { title: string; testId: string; footer?: ReactNode; stub?: boolean; action?: ReactNode; children: ReactNode }) {
   return (
     <article className="slds-card home-card" data-testid={testId}>
-      <div className="slds-card__header">
+      <div className="slds-card__header home-card__header">
         <h2 className="slds-card__header-title">
           {title}
           {stub && <StubBadge />}
         </h2>
+        {action}
       </div>
       <div className="slds-card__body slds-card__body_inner home-card__body">{children}</div>
       {footer && <footer className="slds-card__footer home-card__footer">{footer}</footer>}
@@ -123,25 +126,66 @@ function BuildPipeline({ ownerId, today }: { ownerId?: string; today?: string })
   );
 }
 
+type TaskFilter = 'today' | 'overdue' | 'open';
+
+const TASK_FILTERS: { id: TaskFilter; label: string; empty: string }[] = [
+  { id: 'today', label: "Today's Tasks", empty: 'Nothing due today. Be a go-getter, and check back soon.' },
+  { id: 'overdue', label: 'Overdue Tasks', empty: 'No overdue tasks. Nice work!' },
+  { id: 'open', label: 'All Open Tasks', empty: 'No open tasks.' },
+];
+
+/** The acting user's open tasks, filtered by due date in the browser since the query API compares by equality only. */
 function TodaysTasks({ ownerId, today }: { ownerId?: string; today?: string }) {
+  const [filter, setFilter] = useState<TaskFilter>('today');
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const tasks = useRecordQuery(
     {
       object: 'Task',
       where: [
         { field: 'OwnerId', op: 'eq', value: ownerId },
         { field: 'IsClosed', op: 'eq', value: false },
-        { field: 'ActivityDate', op: 'eq', value: today },
       ],
-      orderBy: [{ field: 'Subject' }],
-      limit: 5,
+      orderBy: [{ field: 'ActivityDate' }, { field: 'Subject' }],
+      limit: 200,
     },
     !!ownerId && !!today,
   );
-  const records = tasks.data?.records ?? [];
+  const complete = useMutation({
+    mutationFn: (task: SRecord) => api.update('Task', task.Id, { Status: 'Completed' }),
+    onSuccess: async (_data, task) => {
+      await refreshRecords(queryClient);
+      toast(`Task "${String(task.Subject ?? '')}" was completed.`);
+    },
+  });
+  const current = TASK_FILTERS.find((f) => f.id === filter)!;
+  const due = (task: SRecord) => (task.ActivityDate ? String(task.ActivityDate) : null);
+  const records = (tasks.data?.records ?? [])
+    .filter((task) => {
+      const date = due(task);
+      if (filter === 'today') return date === today;
+      if (filter === 'overdue') return date !== null && date < today!;
+      return true;
+    })
+    .slice(0, 5);
+
   return (
     <HomeCard
-      title="Today's Tasks"
+      title={current.label}
       testId="home-todays-tasks"
+      action={
+        <Menu
+          align="right"
+          testId="home-task-filter-menu"
+          sections={[{ items: TASK_FILTERS.map((f) => ({ id: f.id, label: f.label, checked: f.id === filter, testId: `task-filter-${f.id}`, onSelect: () => setFilter(f.id) })) }]}
+          trigger={(props) => (
+            <button {...props} type="button" className="slds-button slds-button_icon slds-button_icon-border-filled home-card__menu" title="Select task filter" data-testid="home-task-filter">
+              <ButtonIcon name="down" />
+              <span className="slds-assistive-text">Select task filter</span>
+            </button>
+          )}
+        />
+      }
       footer={
         <Link className="slds-button slds-button_neutral" to="/lightning/o/Task/list?view=mine">
           View All
@@ -149,18 +193,33 @@ function TodaysTasks({ ownerId, today }: { ownerId?: string; today?: string }) {
       }
     >
       {records.length === 0 ? (
-        <EmptyState art={tasksArt} text="Nothing due today. Be a go-getter, and check back soon." />
+        <EmptyState art={tasksArt} text={current.empty} />
       ) : (
         <ul className="home-list">
-          {records.map((task) => (
-            <li key={task.Id} className="home-list__item" data-testid="home-task">
-              <Icon name="task" size="small" />
-              <span className="home-list__text">
-                <Link to={recordUrl('Task', task.Id)}>{String(task.Subject ?? '(no subject)')}</Link>
-                <span className="slds-text-color_weak">{formatValue('date', task.ActivityDate)}</span>
-              </span>
-            </li>
-          ))}
+          {records.map((task) => {
+            const overdue = !!due(task) && due(task)! < today!;
+            return (
+              <li key={task.Id} className="home-list__item" data-testid="home-task">
+                <div className="slds-checkbox">
+                  <input
+                    type="checkbox"
+                    id={`complete-${task.Id}`}
+                    checked={false}
+                    disabled={complete.isPending}
+                    onChange={() => complete.mutate(task)}
+                  />
+                  <label className="slds-checkbox__label" htmlFor={`complete-${task.Id}`} data-testid="home-task-complete">
+                    <span className="slds-checkbox_faux" />
+                    <span className="slds-form-element__label slds-assistive-text">Mark {String(task.Subject ?? '')} complete</span>
+                  </label>
+                </div>
+                <span className="home-list__text">
+                  <Link to={recordUrl('Task', task.Id)}>{String(task.Subject ?? '(no subject)')}</Link>
+                  <span className={overdue ? 'home-task__overdue' : 'slds-text-color_weak'}>{formatValue('date', task.ActivityDate)}</span>
+                </span>
+              </li>
+            );
+          })}
         </ul>
       )}
     </HomeCard>

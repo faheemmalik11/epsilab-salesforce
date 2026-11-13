@@ -1,9 +1,13 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink } from 'react-router';
+import { NavLink, useLocation, useNavigate } from 'react-router';
+import { useDescribe, useRecordQuery } from '../api/hooks';
 import { useActingUser } from '../context/ActingUser';
-import { LAYOUTS, TAB_ORDER } from '../lib/layouts';
+import { LAYOUTS, TAB_ORDER, recordTitle, type TabObject } from '../lib/layouts';
 import { iconHref } from '../icons';
+import { recordUrl } from './FieldOutput';
 import { ButtonIcon, Icon } from './Icon';
+import { Menu, type MenuSection } from './Menu';
+import { RecordForm } from './RecordForm';
 import { STUB_TEXT, StubBadge } from './Stub';
 
 /** Sales app tabs that exist in Salesforce but are out of scope here; each opens a stub page. */
@@ -72,24 +76,96 @@ function UserSwitcher() {
   );
 }
 
-/** Object tabs carry the Lightning dropdown chevron; it is decorative here because recent-item menus are out of scope. */
-function NavItem({ to, label, stub, chevron }: { to: string; label: string; stub?: boolean; chevron?: boolean }) {
+function NavItem({ to, label, stub }: { to: string; label: string; stub?: boolean }) {
   return (
     <NavLink to={to} className={({ isActive }) => `slds-context-bar__item ${stub ? 'nav-stub' : ''} ${isActive ? 'slds-is-active' : ''}`}>
       <span className="slds-context-bar__label-action" title={stub ? `${label}: ${STUB_TEXT}` : label}>
         <span className="slds-truncate">{label}</span>
         {stub && <StubBadge />}
-        {chevron && (
-          <svg className="nav-chevron" aria-hidden="true">
-            <use href={iconHref('utility', 'chevrondown')} />
-          </svg>
-        )}
       </span>
     </NavLink>
   );
 }
 
+/** An object tab: the label opens its list, and the chevron opens New, recent records and list views. */
+function ObjectNavItem({ object, onNew }: { object: TabObject; onNew(object: TabObject): void }) {
+  const layout = LAYOUTS[object];
+  const navigate = useNavigate();
+  const location = useLocation();
+  const describe = useDescribe(object);
+  const [open, setOpen] = useState(false);
+  const recent = useRecordQuery(
+    { object, orderBy: [{ field: 'LastModifiedDate', direction: 'desc' }, { field: 'Id', direction: 'desc' }], limit: 3 },
+    open,
+  );
+  const label = describe.data?.label ?? object;
+  const plural = describe.data?.labelPlural ?? layout.tabLabel;
+  const listUrl = `/lightning/o/${object}/list`;
+  const active = location.pathname.startsWith(`/lightning/o/${object}/`) || location.pathname.startsWith(`/lightning/r/${object}/`);
+
+  const sections: MenuSection[] = [
+    { items: [{ id: 'new', icon: 'add', label: `New ${label}`, testId: `nav-new-${object}`, onSelect: () => onNew(object) }] },
+    {
+      header: 'Recent records',
+      empty: recent.isFetching ? 'Loading…' : 'No recent records',
+      items: (recent.data?.records ?? []).map((record) => ({
+        id: record.Id,
+        label: recordTitle(record),
+        testId: 'nav-recent-record',
+        onSelect: () => navigate(recordUrl(object, record.Id)),
+      })),
+    },
+    {
+      header: 'Recent lists',
+      items: [
+        { id: 'all', label: `All ${plural}`, testId: `nav-list-all-${object}`, onSelect: () => navigate(listUrl) },
+        { id: 'mine', label: `My ${plural}`, testId: `nav-list-mine-${object}`, onSelect: () => navigate(`${listUrl}?view=mine`) },
+      ],
+    },
+    {
+      items: [
+        {
+          id: 'tab',
+          icon: 'new_window',
+          label: `Open "${plural}" in New Tab`,
+          onSelect: () => window.open(listUrl, '_blank', 'noopener'),
+        },
+      ],
+    },
+  ];
+
+  return (
+    <div className={`slds-context-bar__item nav-object ${active ? 'slds-is-active' : ''}`} data-testid={`nav-${object}`}>
+      <NavLink to={listUrl} className="slds-context-bar__label-action nav-object__link" title={layout.tabLabel}>
+        <span className="slds-truncate">{layout.tabLabel}</span>
+      </NavLink>
+      <Menu
+        align="center"
+        testId={`nav-menu-${object}`}
+        onOpenChange={setOpen}
+        sections={sections}
+        trigger={(props) => (
+          <button
+            {...props}
+            type="button"
+            className="slds-button slds-button_icon nav-object__menu"
+            title={`${layout.tabLabel} List`}
+            data-testid={`nav-chevron-${object}`}
+          >
+            <svg className="nav-chevron" aria-hidden="true">
+              <use href={iconHref('utility', 'chevrondown')} />
+            </svg>
+            <span className="slds-assistive-text">{layout.tabLabel} List</span>
+          </button>
+        )}
+      />
+    </div>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
+  const [creating, setCreating] = useState<TabObject | null>(null);
+  const navigate = useNavigate();
   return (
     <div className="app-shell">
       <header className="slds-global-header_container">
@@ -141,7 +217,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </li>
             {TAB_ORDER.map((object) => (
               <li key={object}>
-                <NavItem to={`/lightning/o/${object}/list`} label={LAYOUTS[object].tabLabel} chevron />
+                <ObjectNavItem object={object} onNew={setCreating} />
               </li>
             ))}
             {STUB_TABS.map((tab) => (
@@ -153,6 +229,17 @@ export function AppShell({ children }: { children: ReactNode }) {
         </nav>
       </div>
       <main className="app-body">{children}</main>
+      {creating && (
+        <RecordForm
+          key={creating}
+          object={creating}
+          onClose={() => setCreating(null)}
+          onSaved={(id) => {
+            setCreating(null);
+            navigate(recordUrl(creating, id));
+          }}
+        />
+      )}
     </div>
   );
 }

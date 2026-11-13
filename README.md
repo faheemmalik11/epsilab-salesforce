@@ -26,7 +26,8 @@ Configuration comes from environment variables (see `.env.example`): `GUI_PORT`,
 Salesforce Lightning Experience style at desktop width: the Salesforce Lightning Design System (SLDS 1) with the Cosmos look recreated in `src/web/src/cosmos.css`. Pick the seeded user you act as from **Acting as** in the header.
 
 - **Seller Home:** Build Pipeline (my leads from the last 30 days and their activity), Today's Tasks and Recent Records.
-- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters, "Search this list", a row Edit action and exact counts; New (with Save & New) and Edit forms; record pages with Details, Related lists and Activity.
+- **Navigation:** each object tab's menu has New, recent records and list views.
+- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters, "Search this list", wrap or clip per column, inline edit, row actions (Edit, Delete, Change Owner) and exact counts; New (with Save & New) and Edit forms; record pages with inline edit, Change Owner, Delete, Related lists and Activity (docked Log a Call and New Task composer, grouped timeline).
 - **Lead workflow:** Log a Call, Lead Status path, Convert (new or existing account, optional opportunity). Converted leads are read-only with links to the new records.
 - **Opportunity workflow:** stage path, the close dialog (Closed Won or Closed Lost), Contact Roles, tasks and Next Step.
 - Validation errors are the API's own messages.
@@ -42,6 +43,7 @@ Salesforce Lightning Experience style at desktop width: the Salesforce Lightning
 | New Event, Email | Disabled buttons in the activity composer |
 | My Goals, Today's Events, Salesblazer, Recent Records "View All" | Seller Home cards and buttons |
 | List View Controls, Display as Table, Edit List, Show charts, Pin | Disabled list view toolbar buttons |
+| Edit Labels; New Event | List row menu; record actions menu |
 | Choose Existing Contact, Choose Existing Opportunity | Disabled options in the Convert dialog |
 
 Icons and illustrations come from the Salesforce Lightning Design System (© Salesforce, CC BY-ND 4.0, https://creativecommons.org/licenses/by-nd/4.0/), used unmodified. The SLDS CSS is BSD-3-Clause.

@@ -55,6 +55,7 @@ export const api = {
     request<{ id: string }>('POST', `/api/sobjects/${object}`, fields),
   update: (object: ObjectName, id: string, fields: Record<string, unknown>) =>
     request<null>('PATCH', `/api/sobjects/${object}/${id}`, fields),
+  remove: (object: ObjectName, id: string) => request<null>('DELETE', `/api/sobjects/${object}/${id}`),
   convertLead: (leadId: string, input: Record<string, unknown>) =>
     request<ConvertResult>('POST', `/api/leads/${leadId}/convert`, input),
   clock: () => request<ClockInfo>('GET', '/api/admin/clock'),

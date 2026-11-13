@@ -2,22 +2,27 @@ import { useState } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { refreshRecords } from '../api/hooks';
+import { refreshRecords, useClock } from '../api/hooks';
 import type { SRecord } from '../api/types';
 import { formatValue } from '../lib/format';
+import { recordTitle } from '../lib/layouts';
+import { groupTimeline } from '../lib/timeline';
 import { recordUrl } from './FieldOutput';
-import { Icon } from './Icon';
+import { ButtonIcon, Icon } from './Icon';
 import { PageError } from './PageError';
 import { STUB_TEXT, StubBadge } from './Stub';
 import { useToast } from './Toast';
 
-type Composer = 'call' | 'task';
+export type Composer = 'call' | 'task';
 
 interface ActivityPanelProps {
   record: SRecord;
   /** Tasks attach through WhoId for leads and contacts, WhatId for accounts and opportunities. */
   link: 'WhoId' | 'WhatId';
   readOnly?: boolean;
+  /** The open docked composer; the record header's Log a Call and New Task actions open it too. */
+  composer: Composer | null;
+  onComposerChange(composer: Composer | null): void;
 }
 
 function useTasks(record: SRecord, link: 'WhoId' | 'WhatId') {
@@ -35,68 +40,173 @@ function useTasks(record: SRecord, link: 'WhoId' | 'WhatId') {
   });
 }
 
-function Timeline({ tasks }: { tasks: SRecord[] }) {
-  if (tasks.length === 0) {
-    return <p className="slds-text-color_weak slds-p-vertical_small">No activities to show.</p>;
-  }
+function TimelineItem({ task, overdue }: { task: SRecord; overdue: boolean }) {
+  const call = task.TaskSubtype === 'Call';
   return (
-    <ul className="activity-timeline" data-testid="activity-timeline">
-      {tasks.map((task) => {
-        const call = task.TaskSubtype === 'Call';
-        return (
-          <li key={task.Id} className="activity-timeline__item" data-testid="timeline-item">
-            <span className="activity-timeline__icon">
-              <Icon name={call ? 'log_a_call' : 'task'} size="small" />
-            </span>
-            <div className="activity-timeline__body">
-              <div className="activity-timeline__head">
-                <Link className="slds-truncate" to={recordUrl('Task', task.Id)}>
-                  {String(task.Subject ?? '(no subject)')}
-                </Link>
-                <span className="activity-timeline__date">{formatValue('date', task.ActivityDate)}</span>
-              </div>
-              <p className="activity-timeline__detail">
-                {String(task.Status)}
-                {task.Description ? ` • ${String(task.Description)}` : ''}
-              </p>
-            </div>
-          </li>
-        );
-      })}
-    </ul>
+    <li className="activity-timeline__item" data-testid="timeline-item">
+      <span className="activity-timeline__icon">
+        <Icon name={call ? 'log_a_call' : 'task'} size="small" />
+      </span>
+      <div className="activity-timeline__body">
+        <div className="activity-timeline__head">
+          <Link className="slds-truncate" to={recordUrl('Task', task.Id)}>
+            {String(task.Subject ?? '(no subject)')}
+          </Link>
+          <span className={`activity-timeline__date ${overdue ? 'activity-timeline__date_overdue' : ''}`}>
+            {formatValue('date', task.ActivityDate)}
+          </span>
+        </div>
+        <p className="activity-timeline__detail">
+          {call ? 'You logged a call' : `${String(task.Status)} task`}
+          {task.Description ? ` • ${String(task.Description)}` : ''}
+        </p>
+      </div>
+    </li>
   );
 }
 
-/** Activity composer and timeline. Log a Call creates a completed Call task through the API. */
-export function ActivityPanel({ record, link, readOnly }: ActivityPanelProps) {
-  const [composer, setComposer] = useState<Composer>('call');
-  const [subject, setSubject] = useState('Call');
+function Timeline({ tasks, today }: { tasks: SRecord[]; today: string }) {
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const groups = groupTimeline(tasks, today);
+  return (
+    <div className="activity-timeline" data-testid="activity-timeline">
+      {groups.map((group) => {
+        const closed = collapsed.has(group.key);
+        return (
+          <section key={group.key} className="activity-group" data-testid={`timeline-group-${group.key}`}>
+            <button
+              type="button"
+              className="activity-group__header"
+              aria-expanded={!closed}
+              onClick={() => {
+                const next = new Set(collapsed);
+                if (closed) next.delete(group.key);
+                else next.add(group.key);
+                setCollapsed(next);
+              }}
+            >
+              <ButtonIcon name={closed ? 'chevronright' : 'chevrondown'} />
+              <span>{group.title}</span>
+            </button>
+            {!closed &&
+              (group.tasks.length === 0 ? (
+                <p className="activity-group__empty">{group.empty}</p>
+              ) : (
+                <ul>
+                  {group.tasks.map((task) => (
+                    <TimelineItem key={task.Id} task={task} overdue={group.key === 'upcoming' && !!task.ActivityDate && String(task.ActivityDate) < today} />
+                  ))}
+                </ul>
+              ))}
+          </section>
+        );
+      })}
+    </div>
+  );
+}
+
+/** The docked composer window at the bottom right of the page, as Lightning opens for Log a Call and New Task. */
+function DockedComposer({ record, link, composer, onClose }: { record: SRecord; link: 'WhoId' | 'WhatId'; composer: Composer; onClose(): void }) {
+  const [minimized, setMinimized] = useState(false);
+  const [subject, setSubject] = useState(composer === 'call' ? 'Call' : '');
   const [comments, setComments] = useState('');
-  const [taskSubject, setTaskSubject] = useState('');
   const [dueDate, setDueDate] = useState('');
-  const tasks = useTasks(record, link);
   const queryClient = useQueryClient();
   const toast = useToast();
+  const title = composer === 'call' ? 'Log a Call' : 'New Task';
   const target = link === 'WhoId' ? { whoId: record.Id } : { whatId: record.Id };
 
   const save = useMutation({
     mutationFn: async () => {
       if (composer === 'call') return api.logCall({ ...target, subject, description: comments || null });
-      return api.create('Task', {
-        Subject: taskSubject,
-        ActivityDate: dueDate || null,
-        [link]: record.Id,
-      });
+      return api.create('Task', { Subject: subject, ActivityDate: dueDate || null, [link]: record.Id });
     },
     onSuccess: async () => {
       await refreshRecords(queryClient);
-      toast(`Task "${composer === 'call' ? subject : taskSubject}" was created.`);
-      setComments('');
-      setTaskSubject('');
-      setDueDate('');
+      toast(`Task "${subject}" was created.`);
+      onClose();
     },
   });
 
+  return (
+    <section className={`docked-composer ${minimized ? 'docked-composer_minimized' : ''}`} role="dialog" aria-label={title} data-testid="docked-composer">
+      <header className="docked-composer__header">
+        <Icon name={composer === 'call' ? 'log_a_call' : 'task'} size="small" />
+        <h2 className="docked-composer__title">{title}</h2>
+        <button type="button" className="slds-button slds-button_icon" title={minimized ? 'Expand' : 'Minimize'} onClick={() => setMinimized(!minimized)}>
+          <ButtonIcon name={minimized ? 'expand_alt' : 'minimize_window'} />
+          <span className="slds-assistive-text">{minimized ? 'Expand' : 'Minimize'}</span>
+        </button>
+        <button type="button" className="slds-button slds-button_icon" title="Close" data-testid="composer-close" onClick={onClose}>
+          <ButtonIcon name="close" />
+          <span className="slds-assistive-text">Close {title}</span>
+        </button>
+      </header>
+      {!minimized && (
+        <>
+          <div className="docked-composer__body">
+            <PageError error={save.error} />
+            <div className="slds-form-element slds-m-bottom_small">
+              <label className="slds-form-element__label" htmlFor={composer === 'call' ? 'call-subject' : 'task-subject'}>
+                {composer === 'task' && (
+                  <abbr className="slds-required" title="required">
+                    *{' '}
+                  </abbr>
+                )}
+                Subject
+              </label>
+              <input
+                id={composer === 'call' ? 'call-subject' : 'task-subject'}
+                className="slds-input"
+                autoFocus
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+              />
+            </div>
+            {composer === 'call' ? (
+              <div className="slds-form-element slds-m-bottom_small">
+                <label className="slds-form-element__label" htmlFor="call-comments">
+                  Comments
+                </label>
+                <textarea id="call-comments" className="slds-textarea" rows={4} value={comments} onChange={(e) => setComments(e.target.value)} />
+              </div>
+            ) : (
+              <div className="slds-form-element slds-m-bottom_small">
+                <label className="slds-form-element__label" htmlFor="task-due">
+                  Due Date
+                </label>
+                <input id="task-due" type="date" className="slds-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
+              </div>
+            )}
+            <div className="slds-form-element">
+              <span className="slds-form-element__label">{link === 'WhoId' ? 'Name' : 'Related To'}</span>
+              <span className="slds-pill docked-composer__pill">
+                <Icon name={record.attributes.type === 'Lead' ? 'lead' : record.attributes.type.toLowerCase()} size="x-small" />
+                <span className="slds-pill__label">{recordTitle(record)}</span>
+              </span>
+            </div>
+          </div>
+          <footer className="docked-composer__footer">
+            <button
+              type="button"
+              className="slds-button slds-button_brand"
+              data-testid="activity-save"
+              disabled={save.isPending || (composer === 'task' && !subject)}
+              onClick={() => save.mutate()}
+            >
+              Save
+            </button>
+          </footer>
+        </>
+      )}
+    </section>
+  );
+}
+
+/** Activity: the composer buttons, the docked composer and the grouped timeline. */
+export function ActivityPanel({ record, link, readOnly, composer, onComposerChange }: ActivityPanelProps) {
+  const tasks = useTasks(record, link);
+  const clock = useClock();
   const actions: { id: Composer | 'email' | 'event'; label: string; icon: string; stub?: boolean }[] = [
     { id: 'email', label: 'Email', icon: 'email', stub: true },
     { id: 'event', label: 'New Event', icon: 'event', stub: true },
@@ -111,19 +221,18 @@ export function ActivityPanel({ record, link, readOnly }: ActivityPanelProps) {
       </div>
       <div className="slds-card__body slds-card__body_inner">
         {!readOnly && (
-          <div className="activity-composer">
-            <div className="activity-actions" role="tablist" aria-label="Activity composer">
+          <>
+            <div className="activity-actions">
               {actions.map((action) => (
                 <button
                   key={action.id}
                   type="button"
-                  role="tab"
-                  aria-selected={composer === action.id}
                   className={`activity-action ${composer === action.id ? 'activity-action_active' : ''}`}
                   disabled={action.stub}
+                  aria-pressed={composer === action.id}
                   title={action.stub ? `${action.label}: ${STUB_TEXT}` : action.label}
                   data-testid={`composer-${action.id}`}
-                  onClick={() => !action.stub && setComposer(action.id as Composer)}
+                  onClick={() => !action.stub && onComposerChange(action.id as Composer)}
                 >
                   <Icon name={action.icon} size="small" />
                   <span className="slds-assistive-text">{action.stub ? `${action.label}: ${STUB_TEXT}` : action.label}</span>
@@ -134,57 +243,13 @@ export function ActivityPanel({ record, link, readOnly }: ActivityPanelProps) {
               Email and New Event: {STUB_TEXT}
               <StubBadge />
             </p>
-            <div role="tabpanel" className="activity-form">
-              <h3 className="activity-form__title">{composer === 'call' ? 'Log a Call' : 'New Task'}</h3>
-              <PageError error={save.error} />
-              {composer === 'call' ? (
-                <>
-                  <div className="slds-form-element slds-m-bottom_x-small">
-                    <label className="slds-form-element__label" htmlFor="call-subject">
-                      Subject
-                    </label>
-                    <input id="call-subject" className="slds-input" value={subject} onChange={(e) => setSubject(e.target.value)} />
-                  </div>
-                  <div className="slds-form-element slds-m-bottom_x-small">
-                    <label className="slds-form-element__label" htmlFor="call-comments">
-                      Comments
-                    </label>
-                    <textarea id="call-comments" className="slds-textarea" rows={2} value={comments} onChange={(e) => setComments(e.target.value)} />
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="slds-form-element slds-m-bottom_x-small">
-                    <label className="slds-form-element__label" htmlFor="task-subject">
-                      Subject
-                    </label>
-                    <input id="task-subject" className="slds-input" value={taskSubject} onChange={(e) => setTaskSubject(e.target.value)} />
-                  </div>
-                  <div className="slds-form-element slds-m-bottom_x-small">
-                    <label className="slds-form-element__label" htmlFor="task-due">
-                      Due Date
-                    </label>
-                    <input id="task-due" type="date" className="slds-input" value={dueDate} onChange={(e) => setDueDate(e.target.value)} />
-                  </div>
-                </>
-              )}
-              <div className="slds-text-align_right">
-                <button
-                  type="button"
-                  className="slds-button slds-button_brand"
-                  data-testid="activity-save"
-                  disabled={save.isPending || (composer === 'task' && !taskSubject)}
-                  onClick={() => save.mutate()}
-                >
-                  Save
-                </button>
-              </div>
-            </div>
-          </div>
+          </>
         )}
-        <h3 className="activity-history__title">Activity History</h3>
-        <Timeline tasks={tasks.data ?? []} />
+        <Timeline tasks={tasks.data ?? []} today={clock.data?.today ?? ''} />
       </div>
+      {composer && !readOnly && (
+        <DockedComposer key={composer} record={record} link={link} composer={composer} onClose={() => onComposerChange(null)} />
+      )}
     </article>
   );
 }

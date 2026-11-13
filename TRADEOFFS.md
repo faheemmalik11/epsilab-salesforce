@@ -33,7 +33,9 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | Seller Home follows the brief's screenshot: Build Pipeline, Today's Tasks and Recent Records are live | They read our own data through the same REST API as every other screen |
 | Build Pipeline is computed in the browser from two existing queries (my open leads newest first, then their tasks) | The query API has no date-range operator; this avoids changing the API for one card |
 | "Search this list" filters on the list's name column with the existing `contains` operator, kept in the URL as `q` | Lightning searches the list as you type; no new API was needed |
-| The pencil on each detail field opens the existing Edit form at that record | It gives Lightning's inline-edit entry point without a second editing path |
+| Inline edit in list views and on record details, saving through the same PATCH API | It matches Lightning, and every rule and error still comes from the service layer |
+| One shared `Menu` component for nav tabs, row actions, column menus, the list picker and record overflow | Same look, keyboard handling and closing behaviour everywhere |
+| Log a Call and New Task open a docked composer at the bottom right | That's where Lightning opens them |
 | Save & New in the New form, and an Edit row action in list views | Both are on the Lightning surfaces the brief reviews and reuse the same form and API calls |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
@@ -49,6 +51,7 @@ Each stub is visibly marked in the UI with a **Stub** badge or "Not available in
 | "Recently Viewed" and "All Open …" list views (disabled in the picker) | AC2 needs All Leads; All and My views are built |
 | New Event and Email buttons in the activity composer | Events and real email are out of scope in the brief |
 | Seller Home cards My Goals, Today's Events and Salesblazer, and Recent Records "View All" | Goals, events, community content and view history are out of scope |
+| Edit Labels in the list row menu, and New Event in the record overflow menu | Labels and events are out of scope |
 | List view toolbar buttons List View Controls, Display as Table, Edit List and Show charts, and Pin this list view | List view administration and charts are out of scope; Refresh and Filters are live |
 | "Choose Existing Contact" and "Choose Existing Opportunity" in the Convert dialog | The brief's conversion creates a contact and an optional new opportunity |
 
@@ -58,9 +61,10 @@ Each stub is visibly marked in the UI with a **Stub** badge or "Not available in
 |---|---|
 | Converting a lead into an existing contact | The brief says conversion "creates a Contact"; the Convert dialog marks it as a stub |
 | Renaming the new account in the Convert dialog | The convert API names the account after the lead's Company, as Salesforce does by default; the field is shown read-only |
-| True inline editing, mass actions (Change Status, Change Owner) and record deletion in the GUI | Not needed by the brief's workflow; list checkboxes only count the selection, and delete stays available through REST and MCP |
+| Mass actions on selected rows | Not needed by the brief's workflow; list checkboxes only count the selection |
+| Inline edit of lookups, owners, long text and compound names in list cells | They need the full form (Owner uses Change Owner), as in Lightning |
 | Tasks split view (list on the left, task on the right) | Skipped for Phase 6b by agreement; Tasks keeps the standard list view and record page |
-| Dropdown menus on the navigation tabs (recent items) | The chevrons are shown for fidelity but open nothing; each tab still opens its list |
+| View history | "Recent records" in the nav menus and on Home are the most recently modified records |
 | Attaching a conversion to an existing opportunity (`opportunityId`) | Not required by the lifecycle; the opportunity is optional and new |
 | Email notification on conversion | Real email sending is out of scope in the brief |
 
@@ -92,6 +96,7 @@ Each one is recorded with its source in `docs/reference/`.
 | List sorting on text is case-insensitive (NOCASE) | Salesforce list views sort case-insensitively |
 | Object icons are circles in the standard SLDS colours, except Lead, which uses its Cosmos theme colour #06A59A | Measured in the real org (object theme info); the other objects match the sprite colours |
 | Recent Records shows the most recently modified leads, accounts, contacts and opportunities, newest Id first on ties | There is no view history; with the fixed test clock many records share a timestamp |
+| Today's Tasks offers Today's, Overdue and All Open filters, filtering the user's open tasks by due date in the browser | The query API compares by equality only; these three cover the card's purpose |
 | The Home greeting uses the app clock's UTC hour | All app dates come from the app clock, not the browser |
 | Button hover, press and focus, the spinner, the modal fade and the blurred backdrop use the Cosmos values measured in the org | The user asked for loaders, animations, buttons and icons to match Salesforce |
 | The Seller Home empty states use SLDS's own illustrations, unmodified (CC BY-ND 4.0, credited in the README) | No artwork is copied from Salesforce's product pages; SLDS's icons are under the same licence |

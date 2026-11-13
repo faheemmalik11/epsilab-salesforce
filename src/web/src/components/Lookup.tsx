@@ -2,15 +2,12 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../api/client';
 import type { ObjectName } from '../api/types';
+import type { LookupValue } from '../lib/formValues';
 import { useActingUser } from '../context/ActingUser';
 import { layoutFor } from '../lib/layouts';
 import { ButtonIcon, Icon } from './Icon';
 
-export interface LookupValue {
-  id: string;
-  name: string;
-  object: ObjectName;
-}
+export type { LookupValue } from '../lib/formValues';
 
 interface LookupProps {
   id: string;

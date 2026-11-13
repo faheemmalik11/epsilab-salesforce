@@ -1,17 +1,22 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useSearchParams } from 'react-router';
-import { api } from '../api/client';
-import { useDescribe } from '../api/hooks';
+import { api, ApiError } from '../api/client';
+import { refreshRecords, useDescribe } from '../api/hooks';
 import type { FieldDescribe, QueryCondition, SRecord } from '../api/types';
-import { DataTable, type Sort } from '../components/DataTable';
+import { DataTable, type Drafts, type Sort } from '../components/DataTable';
+import type { FormValue } from '../components/FieldInput';
+import { Menu } from '../components/Menu';
+import { ChangeOwnerModal, DeleteRecordModal } from '../components/RecordActions';
+import { useToast } from '../components/Toast';
+import { changedFields, initialValue, toApiValue } from '../lib/formValues';
 import { ButtonIcon, Icon } from '../components/Icon';
 import { PageError } from '../components/PageError';
 import { RecordForm } from '../components/RecordForm';
 import { STUB_TEXT, StubBadge } from '../components/Stub';
 import { useActingUser } from '../context/ActingUser';
 import { formatNumber } from '../lib/format';
-import { LAYOUTS, type TabObject } from '../lib/layouts';
+import { LAYOUTS, recordTitle, type TabObject } from '../lib/layouts';
 import { recordUrl } from '../components/FieldOutput';
 import { Spinner } from '../components/Spinner';
 
@@ -162,8 +167,15 @@ export function ListPage({ object }: { object: TabObject }) {
   const [params, setParams] = useSearchParams();
   const [creating, setCreating] = useState(false);
   const [showFilters, setShowFilters] = useState(false);
-  const [pickerOpen, setPickerOpen] = useState(false);
+  const [viewSearch, setViewSearch] = useState('');
   const [editing, setEditing] = useState<SRecord | null>(null);
+  const [deleting, setDeleting] = useState<SRecord | null>(null);
+  const [changingOwner, setChangingOwner] = useState<SRecord | null>(null);
+  const [wrapped, setWrapped] = useState<Set<string>>(new Set());
+  const [drafts, setDrafts] = useState<Drafts>({});
+  const [saveErrors, setSaveErrors] = useState<Record<string, string[]>>({});
+  const queryClient = useQueryClient();
+  const toast = useToast();
   const [selected, setSelected] = useState<Set<string>>(new Set());
   const search = params.get('q') ?? '';
   const [searchDraft, setSearchDraft] = useState(search);
@@ -224,6 +236,49 @@ export function ListPage({ object }: { object: TabObject }) {
     return () => clearTimeout(timer);
   }, [searchDraft, search, setParams]);
 
+  /** Keeps a cell's draft only while it differs from the saved value, as Lightning does. */
+  const editCell = (record: SRecord, name: string, value: FormValue) => {
+    const field = fields.get(name);
+    if (!field) return;
+    setDrafts((current) => {
+      const row = { ...current[record.Id], [name]: value };
+      if (toApiValue(field, value) === toApiValue(field, initialValue(field, record))) delete row[name];
+      const next = { ...current, [record.Id]: row };
+      if (Object.keys(row).length === 0) delete next[record.Id];
+      return next;
+    });
+  };
+  const editCount = Object.keys(drafts).length;
+  const cancelEdits = () => {
+    setDrafts({});
+    setSaveErrors({});
+  };
+
+  // Each edited row is saved with its own PATCH; rows that fail keep their edits and show the API's messages.
+  const saveEdits = useMutation({
+    mutationFn: async () => {
+      const failed: Record<string, string[]> = {};
+      let saved = 0;
+      for (const [id, row] of Object.entries(drafts)) {
+        const record = records.find((r) => r.Id === id);
+        if (!record) continue;
+        try {
+          await api.update(object, id, changedFields([...fields.values()], record, row));
+          saved++;
+        } catch (error) {
+          failed[id] = error instanceof ApiError ? error.errors.map((e) => e.message) : [String(error)];
+        }
+      }
+      return { failed, saved };
+    },
+    onSuccess: async ({ failed, saved }) => {
+      setDrafts((current) => Object.fromEntries(Object.entries(current).filter(([id]) => id in failed)));
+      setSaveErrors(failed);
+      await refreshRecords(queryClient);
+      if (saved > 0) toast(`${saved} ${saved === 1 ? describe.data?.label ?? 'record' : plural} saved.`);
+    },
+  });
+
   const listKey = JSON.stringify([object, where, sort]);
   useEffect(() => setSelected(new Set()), [listKey]);
 
@@ -254,50 +309,50 @@ export function ListPage({ object }: { object: TabObject }) {
                   <h1 className="list-header__title slds-truncate" data-testid="list-view-name">
                     {viewLabel}
                   </h1>
-                  <div className={`slds-dropdown-trigger slds-dropdown-trigger_click ${pickerOpen ? 'slds-is-open' : ''}`}>
-                    <button
-                      type="button"
-                      className="slds-button slds-button_icon slds-button_icon-small list-header__picker"
-                      aria-haspopup="true"
-                      title="Select a list view"
-                      data-testid="list-view-picker"
-                      onClick={() => setPickerOpen(!pickerOpen)}
-                    >
-                      <ButtonIcon name="down" />
-                      <span className="slds-assistive-text">Select a list view</span>
-                    </button>
-                    {pickerOpen && (
-                      <div className="slds-dropdown slds-dropdown_left">
-                        <ul className="slds-dropdown__list" role="menu">
-                          {(['all', 'mine'] as const).map((v) => (
-                            <li key={v} className="slds-dropdown__item" role="presentation">
-                              <a
-                                href="#"
-                                role="menuitem"
-                                onClick={(e) => {
-                                  e.preventDefault();
-                                  update({ view: v === 'all' ? null : v });
-                                  setPickerOpen(false);
-                                }}
-                              >
-                                <span className="slds-truncate">{`${v === 'mine' ? 'My' : 'All'} ${plural}`}</span>
-                              </a>
-                            </li>
-                          ))}
-                          {STUB_VIEWS.map((name) => (
-                            <li key={name} className="slds-dropdown__item" role="presentation">
-                              <a role="menuitem" aria-disabled="true" title={STUB_TEXT}>
-                                <span className="slds-truncate slds-text-color_weak">
-                                  {name === 'All Open' ? `All Open ${plural}` : name}
-                                  <StubBadge />
-                                </span>
-                              </a>
-                            </li>
-                          ))}
-                        </ul>
+                  <Menu
+                    testId="list-view-menu"
+                    onOpenChange={(open) => !open && setViewSearch('')}
+                    header={
+                      <div className="cosmos-menu__search">
+                        <input
+                          type="search"
+                          className="slds-input"
+                          placeholder="Search lists..."
+                          aria-label="Search lists"
+                          data-testid="list-view-search"
+                          value={viewSearch}
+                          onChange={(e) => setViewSearch(e.target.value)}
+                        />
                       </div>
+                    }
+                    sections={[
+                      {
+                        header: 'List Views',
+                        empty: 'No results',
+                        items: [
+                          ...(['all', 'mine'] as const).map((v) => ({
+                            id: v,
+                            label: `${v === 'mine' ? 'My' : 'All'} ${plural}`,
+                            checked: view === v,
+                            onSelect: () => update({ view: v === 'all' ? null : v }),
+                          })),
+                          ...STUB_VIEWS.map((name) => ({ id: name, label: name === 'All Open' ? `All Open ${plural}` : name, stub: true })),
+                        ].filter((item) => item.label.toLowerCase().includes(viewSearch.trim().toLowerCase())),
+                      },
+                    ]}
+                    trigger={(props) => (
+                      <button
+                        {...props}
+                        type="button"
+                        className="slds-button slds-button_icon slds-button_icon-small list-header__picker"
+                        title="Select a List View"
+                        data-testid="list-view-picker"
+                      >
+                        <ButtonIcon name="down" />
+                        <span className="slds-assistive-text">Select a List View</span>
+                      </button>
                     )}
-                  </div>
+                  />
                   <button
                     type="button"
                     className="slds-button slds-button_icon slds-button_icon-border list-header__pin"
@@ -392,7 +447,22 @@ export function ListPage({ object }: { object: TabObject }) {
             records={records}
             numbered
             selection={{ selected, onChange: setSelected }}
-            onEdit={setEditing}
+            rowActions={(record) => [
+              { id: 'edit', label: 'Edit', testId: 'row-edit', onSelect: () => setEditing(record) },
+              { id: 'delete', label: 'Delete', testId: 'row-delete', onSelect: () => setDeleting(record) },
+              ...('OwnerId' in record ? [{ id: 'owner', label: 'Change Owner', testId: 'row-change-owner', onSelect: () => setChangingOwner(record) }] : []),
+              { id: 'labels', label: 'Edit Labels', stub: true },
+            ]}
+            wrap={{
+              wrapped,
+              onChange: (field, on) => {
+                const next = new Set(wrapped);
+                if (on) next.add(field);
+                else next.delete(field);
+                setWrapped(next);
+              },
+            }}
+            inlineEdit={{ drafts, errors: saveErrors, onChange: editCell }}
             sort={sort}
             onSort={(field) =>
               update({ sort: field, dir: sort.field === field && sort.direction === 'asc' ? 'desc' : null })
@@ -402,6 +472,28 @@ export function ListPage({ object }: { object: TabObject }) {
           {isFetchingNextPage && <Spinner size="small" />}
           {list.isFetching && !isFetchingNextPage && <Spinner overlay />}
         </div>
+        {editCount > 0 && (
+          <div className="inline-edit-footer" role="region" aria-label="Unsaved changes" data-testid="inline-edit-footer">
+            {Object.keys(saveErrors).length > 0 && (
+              <div className="inline-edit-errors" role="alert" data-testid="inline-edit-errors">
+                <h2>We hit a snag.</h2>
+                <ul>
+                  {Object.entries(saveErrors).map(([id, messages]) => (
+                    <li key={id}>
+                      <strong>{recordTitle(records.find((r) => r.Id === id) ?? { Id: id })}:</strong> {messages.join(' ')}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            <button type="button" className="slds-button slds-button_neutral" data-testid="inline-cancel" onClick={cancelEdits}>
+              Cancel
+            </button>
+            <button type="button" className="slds-button slds-button_brand" data-testid="inline-save" disabled={saveEdits.isPending} onClick={() => saveEdits.mutate()}>
+              Save
+            </button>
+          </div>
+        )}
         {showFilters && (
           <FilterPanel
             fields={picklistFields}
@@ -420,6 +512,8 @@ export function ListPage({ object }: { object: TabObject }) {
         <RecordForm object={object} onClose={() => setCreating(false)} onSaved={(id) => navigate(recordUrl(object, id))} />
       )}
       {editing && <RecordForm object={object} record={editing} onClose={() => setEditing(null)} onSaved={() => setEditing(null)} />}
+      {deleting && <DeleteRecordModal record={deleting} onClose={() => setDeleting(null)} onDeleted={() => setDeleting(null)} />}
+      {changingOwner && <ChangeOwnerModal record={changingOwner} onClose={() => setChangingOwner(null)} />}
     </div>
   );
 }

@@ -4,7 +4,7 @@
 // starts its own server on separate ports, creates its fixtures there, then shuts it down and
 // deletes the folder. Requires a build (`pnpm build`).
 //
-// Usage: node scripts/capture-screens.mjs <outDir>
+// Usage: node scripts/capture-screens.mjs <outDir> [--viewport 1440x900]
 import { spawn, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -12,6 +12,8 @@ import path from 'node:path';
 import { chromium } from '@playwright/test';
 
 const out = process.argv[2] ?? 'docs/fidelity/after';
+const viewportArg = process.argv[process.argv.indexOf('--viewport') + 1];
+const [width, height] = (process.argv.includes('--viewport') ? viewportArg : '1440x900').split('x').map(Number);
 const GUI_PORT = 3210;
 const API_PORT = 8290;
 const base = `http://127.0.0.1:${GUI_PORT}`;
@@ -56,7 +58,7 @@ try {
 
   fs.mkdirSync(out, { recursive: true });
   const browser = await chromium.launch();
-  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  const page = await browser.newPage({ viewport: { width, height } });
   const shot = async (name) => {
     await page.waitForLoadState('networkidle');
     await page.screenshot({ path: path.join(out, `${name}.png`) });
@@ -101,6 +103,46 @@ try {
   await page.goto(`${base}/lightning/o/Account/list`);
   await page.getByTestId('data-row').first().waitFor();
   await shot('13-accounts-list');
+
+
+  // Interaction states
+  await page.goto(`${base}/lightning/o/Lead/list`);
+  await page.getByTestId('data-row').first().waitFor();
+  await page.getByTestId('nav-chevron-Lead').click();
+  await page.getByTestId('nav-recent-record').first().waitFor();
+  await page.getByTestId('nav-recent-record').first().hover();
+  await shot('14-nav-menu-leads');
+  await page.keyboard.press('Escape');
+  const row = page.getByTestId('data-row').first();
+  await row.locator('td[data-field=Status]').hover();
+  await shot('15-list-row-hover');
+  await row.getByTestId('edit-cell-Status').click();
+  await page.locator('#inline-Status').selectOption('Working - Contacted');
+  await shot('16-list-inline-editor');
+  await page.mouse.click(600, 150);
+  await shot('17-list-inline-edited');
+  await page.getByTestId('inline-cancel').click();
+  await row.getByTestId('row-actions').click();
+  await shot('18-list-row-actions');
+  await page.keyboard.press('Escape');
+  await page.getByTestId('column-actions-Company').click();
+  await shot('19-list-column-menu');
+  await page.keyboard.press('Escape');
+  await page.getByTestId('list-view-picker').click();
+  await shot('20-list-view-picker');
+  await page.keyboard.press('Escape');
+  await page.goto(`${base}/lightning/r/Lead/${lead.id}/view`);
+  await page.getByTestId('record-title').waitFor();
+  await page.getByTestId('inline-edit-Title').click();
+  await page.locator('#field-Title').fill('Commodore');
+  await shot('21-lead-inline-edit');
+  await page.getByTestId('details-cancel').click();
+  await page.getByTestId('more-actions').click();
+  await shot('22-lead-more-actions');
+  await page.keyboard.press('Escape');
+  await page.getByTestId('composer-task').click();
+  await page.getByTestId('docked-composer').waitFor();
+  await shot('23-docked-composer');
 
   await browser.close();
   console.log(`Saved screenshots to ${out} (isolated server, data deleted)`);

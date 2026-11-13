@@ -1,7 +1,8 @@
 import type { FieldDescribe } from '../api/types';
-import { Lookup, type LookupValue } from './Lookup';
+import { Lookup } from './Lookup';
+import type { FormValue } from '../lib/formValues';
 
-export type FormValue = string | boolean | LookupValue | null;
+export type { FormValue } from '../lib/formValues';
 
 interface FieldInputProps {
   field: FieldDescribe;
@@ -12,6 +13,11 @@ interface FieldInputProps {
   required?: boolean;
   disabled?: boolean;
   lookupWhere?: { field: string; op: 'eq'; value: unknown }[];
+  /** Element id; defaults to field-<Name>. */
+  inputId?: string;
+  /** Keeps the label for screen readers only, as in a list cell editor. */
+  hideLabel?: boolean;
+  autoFocus?: boolean;
 }
 
 const INPUT_TYPES: Record<string, string> = {
@@ -26,8 +32,8 @@ const INPUT_TYPES: Record<string, string> = {
 };
 
 /** One form element for a field, chosen by its describe type, with SLDS error styling. */
-export function FieldInput({ field, value, onChange, errors = [], required, disabled, lookupWhere }: FieldInputProps) {
-  const id = `field-${field.name}`;
+export function FieldInput({ field, value, onChange, errors = [], required, disabled, lookupWhere, inputId, hideLabel, autoFocus }: FieldInputProps) {
+  const id = inputId ?? `field-${field.name}`;
   const invalid = errors.length > 0;
 
   if (field.type === 'boolean') {
@@ -53,6 +59,7 @@ export function FieldInput({ field, value, onChange, errors = [], required, disa
         <select
           id={id}
           className="slds-select"
+          autoFocus={autoFocus}
           value={typeof value === 'string' ? value : ''}
           disabled={disabled}
           aria-invalid={invalid || undefined}
@@ -86,6 +93,7 @@ export function FieldInput({ field, value, onChange, errors = [], required, disa
       <textarea
         id={id}
         className="slds-textarea"
+        autoFocus={autoFocus}
         rows={3}
         value={typeof value === 'string' ? value : ''}
         disabled={disabled}
@@ -98,6 +106,7 @@ export function FieldInput({ field, value, onChange, errors = [], required, disa
       <input
         id={id}
         className="slds-input"
+        autoFocus={autoFocus}
         type={INPUT_TYPES[field.type] ?? 'text'}
         step={field.type === 'int' ? 1 : 'any'}
         maxLength={field.length}
@@ -111,7 +120,7 @@ export function FieldInput({ field, value, onChange, errors = [], required, disa
 
   return (
     <div className={`slds-form-element slds-form-element_stacked ${invalid ? 'slds-has-error' : ''}`}>
-      <label className="slds-form-element__label" htmlFor={id}>
+      <label className={`slds-form-element__label ${hideLabel ? 'slds-assistive-text' : ''}`} htmlFor={id}>
         {required && (
           <abbr className="slds-required" title="required">
             *{' '}
