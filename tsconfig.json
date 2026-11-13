@@ -1,0 +1,12 @@
+{
+  "files": [],
+  "references": [],
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "types": ["node"],
+    "noEmit": true
+  },
+  "include": ["tests/**/*.ts", "vite.config.ts", "vitest.config.ts", "playwright.config.ts"]
+}

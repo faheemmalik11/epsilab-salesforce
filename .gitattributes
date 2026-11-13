@@ -1,0 +1,3 @@
+# Keep seed files byte-exact so their hashes match the manifest.
+seed/*.csv -text
+seed/*.json -text
