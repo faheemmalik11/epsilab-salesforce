@@ -1,5 +1,6 @@
 import type {
   ApiErrorItem,
+  ClockInfo,
   ConvertResult,
   ObjectDescribe,
   ObjectName,
@@ -56,5 +57,6 @@ export const api = {
     request<null>('PATCH', `/api/sobjects/${object}/${id}`, fields),
   convertLead: (leadId: string, input: Record<string, unknown>) =>
     request<ConvertResult>('POST', `/api/leads/${leadId}/convert`, input),
+  clock: () => request<ClockInfo>('GET', '/api/admin/clock'),
   logCall: (input: Record<string, unknown>) => request<{ id: string }>('POST', '/api/tasks/log-call', input),
 };

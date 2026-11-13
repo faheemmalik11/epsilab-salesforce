@@ -17,3 +17,8 @@ playwright-report/
 .DS_Store
 /seed/
 .e2e-data/
+
+# Salesforce reference screenshots from a real org: local only, may show personal data.
+docs/fidelity/reference/
+/docs/fidelity/before/
+/docs/fidelity/after/

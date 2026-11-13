@@ -1,4 +1,4 @@
-import { useEffect, type ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { ButtonIcon } from './Icon';
 
 interface ModalProps {
@@ -10,6 +10,13 @@ interface ModalProps {
 }
 
 export function Modal({ title, onClose, children, footer, size = 'medium' }: ModalProps) {
+  // Opened a frame after mounting, so the SLDS fade-in transition runs.
+  const [open, setOpen] = useState(false);
+  useEffect(() => {
+    const frame = requestAnimationFrame(() => setOpen(true));
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   useEffect(() => {
     const onKey = (event: KeyboardEvent) => event.key === 'Escape' && onClose();
     window.addEventListener('keydown', onKey);
@@ -18,7 +25,7 @@ export function Modal({ title, onClose, children, footer, size = 'medium' }: Mod
 
   return (
     <>
-      <section role="dialog" aria-modal="true" aria-label={title} className={`slds-modal slds-fade-in-open slds-modal_${size}`}>
+      <section role="dialog" aria-modal="true" aria-label={title} className={`slds-modal slds-modal_${size} ${open ? 'slds-fade-in-open' : ''}`}>
         <div className="slds-modal__container">
           <button type="button" className="slds-button slds-button_icon slds-modal__close" onClick={onClose}>
             <ButtonIcon name="close" />
@@ -31,7 +38,7 @@ export function Modal({ title, onClose, children, footer, size = 'medium' }: Mod
           {footer && <div className="slds-modal__footer">{footer}</div>}
         </div>
       </section>
-      <div className="slds-backdrop slds-backdrop_open" role="presentation" />
+      <div className={`slds-backdrop ${open ? 'slds-backdrop_open' : ''}`} role="presentation" />
     </>
   );
 }

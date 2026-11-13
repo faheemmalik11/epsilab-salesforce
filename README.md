@@ -2,7 +2,7 @@
 
 A working clone of the Salesforce Sales Cloud core (Lead, Account, Contact, Opportunity, Task, with seeded Users), with a GUI, a REST API and an MCP server on one shared service layer.
 
-Status: Phase 8 (reset, snapshots, clock) on top of the Phase 6a GUI. Phase 6b adds visual polish and the full Seller Home page. See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
+Status: Phase 6b (Lightning visual fidelity and Seller Home) on top of Phase 8 (reset, snapshots, clock). See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
 
 ## Run with Docker
 
@@ -23,9 +23,10 @@ Configuration comes from environment variables (see `.env.example`): `GUI_PORT`,
 
 ## GUI
 
-Salesforce Lightning Experience style, built with the Salesforce Lightning Design System, at desktop width. Pick the seeded user you act as from **Acting as** in the header.
+Salesforce Lightning Experience style at desktop width: the Salesforce Lightning Design System (SLDS 1) with the Cosmos look recreated in `src/web/src/cosmos.css`. Pick the seeded user you act as from **Acting as** in the header.
 
-- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters and exact counts, New/Edit forms, record pages with Details, Related lists and Activity.
+- **Seller Home:** Build Pipeline (my leads from the last 30 days and their activity), Today's Tasks and Recent Records.
+- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters, "Search this list", a row Edit action and exact counts; New (with Save & New) and Edit forms; record pages with Details, Related lists and Activity.
 - **Lead workflow:** Log a Call, Lead Status path, Convert (new or existing account, optional opportunity). Converted leads are read-only with links to the new records.
 - **Opportunity workflow:** stage path, the close dialog (Closed Won or Closed Lost), Contact Roles, tasks and Next Step.
 - Validation errors are the API's own messages.
@@ -38,7 +39,12 @@ Salesforce Lightning Experience style, built with the Salesforce Lightning Desig
 | Global search | Disabled search box in the header |
 | App Launcher | Inert icon beside the app name |
 | Recently Viewed, All Open list views | Disabled entries in the list view picker |
-| New Event, Email | Disabled tabs in the activity composer |
+| New Event, Email | Disabled buttons in the activity composer |
+| My Goals, Today's Events, Salesblazer, Recent Records "View All" | Seller Home cards and buttons |
+| List View Controls, Display as Table, Edit List, Show charts, Pin | Disabled list view toolbar buttons |
+| Choose Existing Contact, Choose Existing Opportunity | Disabled options in the Convert dialog |
+
+Icons and illustrations come from the Salesforce Lightning Design System (© Salesforce, CC BY-ND 4.0, https://creativecommons.org/licenses/by-nd/4.0/), used unmodified. The SLDS CSS is BSD-3-Clause.
 
 ## REST API
 

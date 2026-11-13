@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
@@ -10,13 +10,14 @@ import { ContactRoleModal } from '../components/ContactRoleModal';
 import { ConvertLeadModal } from '../components/ConvertLeadModal';
 import { DataTable, columnLabel } from '../components/DataTable';
 import { FieldOutput, recordUrl } from '../components/FieldOutput';
-import { Icon } from '../components/Icon';
+import { ButtonIcon, Icon } from '../components/Icon';
 import { PageError } from '../components/PageError';
 import { Path, type PathStep } from '../components/Path';
 import { RecordForm } from '../components/RecordForm';
 import { useToast } from '../components/Toast';
 import { formatValue } from '../lib/format';
 import { LAYOUTS, layoutFor, recordTitle, type Layout, type RelatedList, type TabObject } from '../lib/layouts';
+import { Spinner } from '../components/Spinner';
 
 /** Lead path steps (docs/reference/picklists.md): the working statuses, then conversion. */
 const LEAD_PATH = ['Open - Not Contacted', 'Working - Contacted', 'Closed - Not Converted'];
@@ -101,12 +102,12 @@ function OpportunityPath({ opportunity, stages }: { opportunity: SRecord; stages
 
 function Highlights({ layout, record, fields }: { layout: Layout; record: SRecord; fields: Map<string, FieldDescribe> }) {
   return (
-    <ul className="slds-page-header__detail-row">
+    <ul className="record-highlights">
       {layout.highlights.map((column) => {
         const field = fields.get(column.field);
         return field ? (
-          <li key={column.field} className="slds-page-header__detail-block">
-            <div className="slds-text-title slds-truncate">{columnLabel(column, fields)}</div>
+          <li key={column.field} className="record-highlights__item">
+            <div className="record-highlights__label slds-truncate">{columnLabel(column, fields)}</div>
             <div className="slds-truncate" data-testid={`highlight-${column.field}`}>
               <FieldOutput field={field} record={record} />
             </div>
@@ -117,33 +118,70 @@ function Highlights({ layout, record, fields }: { layout: Layout; record: SRecor
   );
 }
 
-function Details({ layout, record, fields }: { layout: Layout; record: SRecord; fields: Map<string, FieldDescribe> }) {
+const NAME_PARTS = ['Salutation', 'FirstName', 'LastName'];
+
+function DetailRow({ label, testId, onEdit, wide, children }: { label: string; testId: string; onEdit?(): void; wide?: boolean; children: ReactNode }) {
   return (
-    <>
-      {layout.sections.map((section) => (
-        <div key={section.title} className="slds-section slds-is-open">
-          <h3 className="slds-section__title slds-theme_shade">
-            <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
-          </h3>
-          <div className="slds-section__content slds-grid slds-wrap">
-            {section.fields.map((name) => {
-              const field = fields.get(name);
-              return field ? (
-                <div key={name} className={`slds-col slds-p-horizontal_small ${field.type === 'textarea' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
-                  <div className="slds-form-element slds-form-element_readonly slds-form-element_stacked">
-                    <span className="slds-form-element__label">{field.label}</span>
-                    <div className="slds-form-element__control">
-                      <div className="slds-form-element__static" data-testid={`detail-${name}`}>
-                        <FieldOutput field={field} record={record} />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ) : null;
-            })}
+    <div className={`slds-col slds-p-horizontal_small ${wide ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
+      <div className="slds-form-element slds-form-element_readonly slds-form-element_stacked detail-row">
+        <span className="slds-form-element__label">{label}</span>
+        <div className="slds-form-element__control">
+          <div className="slds-form-element__static" data-testid={testId}>
+            {children}
           </div>
         </div>
-      ))}
+        {onEdit && (
+          <button type="button" className="slds-button slds-button_icon detail-row__edit" title={`Edit ${label}`} onClick={onEdit}>
+            <ButtonIcon name="edit" />
+            <span className="slds-assistive-text">Edit {label}</span>
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Detail sections; the pencil on an editable field opens the Edit form, as inline edit's entry point. */
+function Details({ layout, record, fields, onEdit }: { layout: Layout; record: SRecord; fields: Map<string, FieldDescribe>; onEdit?(): void }) {
+  return (
+    <>
+      {layout.sections.map((section) => {
+        const names = section.fields.filter((name) => fields.has(name));
+        const hasName = NAME_PARTS.filter((n) => names.includes(n)).length > 1;
+        const shown = hasName ? names.filter((n, i) => !NAME_PARTS.includes(n) || i === names.findIndex((m) => NAME_PARTS.includes(m))) : names;
+        return (
+          <div key={section.title} className="slds-section slds-is-open">
+            <h3 className="slds-section__title slds-theme_shade">
+              <ButtonIcon name="chevrondown" />
+              <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
+            </h3>
+            <div className="slds-section__content slds-grid slds-wrap">
+              {shown.map((name) => {
+                if (hasName && NAME_PARTS.includes(name)) {
+                  const full = NAME_PARTS.map((n) => record[n]).filter(Boolean).join(' ');
+                  return (
+                    <DetailRow key="Name" label="Name" testId="detail-Name" onEdit={onEdit}>
+                      {full}
+                    </DetailRow>
+                  );
+                }
+                const field = fields.get(name)!;
+                return (
+                  <DetailRow
+                    key={name}
+                    label={field.label}
+                    testId={`detail-${name}`}
+                    wide={field.type === 'textarea'}
+                    onEdit={field.updateable ? onEdit : undefined}
+                  >
+                    <FieldOutput field={field} record={record} />
+                  </DetailRow>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
     </>
   );
 }
@@ -236,12 +274,8 @@ export function RecordPage() {
   if (record.error) return <div className="slds-p-around_medium"><PageError error={record.error} /></div>;
   if (!record.data || !describe.data) {
     return (
-      <div className="slds-is-relative slds-p-around_xx-large">
-        <div role="status" className="slds-spinner slds-spinner_medium">
-          <span className="slds-assistive-text">Loading</span>
-          <div className="slds-spinner__dot-a" />
-          <div className="slds-spinner__dot-b" />
-        </div>
+      <div className="page-loading">
+        <Spinner overlay />
       </div>
     );
   }
@@ -251,99 +285,87 @@ export function RecordPage() {
   const converted = object === 'Lead' && data.IsConverted === true;
   const stageField = fields.get('StageName');
 
+  const actions = [
+    ...(object === 'Lead' && !converted
+      ? [{ id: 'convert-lead', label: 'Convert', run: () => setConverting(true) }]
+      : []),
+    ...(!converted ? [{ id: 'edit-record', label: 'Edit', run: () => setEditing(true) }] : []),
+  ];
+  const hasPath = (object === 'Lead' && !converted) || (object === 'Opportunity' && !!stageField);
+
   return (
-    <div className="slds-p-around_small" data-testid="record-page">
-      <div className="slds-page-header slds-page-header_record-home slds-m-bottom_small">
-        <div className="slds-page-header__row">
-          <div className="slds-page-header__col-title">
-            <div className="slds-media">
-              <div className="slds-media__figure">
-                <Icon name={layout.icon} size="medium" />
-              </div>
-              <div className="slds-media__body">
-                <div className="slds-page-header__name">
-                  <div className="slds-page-header__name-title">
-                    <h1>
-                      <span>{describe.data.label}</span>
-                      <span className="slds-page-header__title slds-truncate" data-testid="record-title">
-                        {recordTitle(data)}
-                      </span>
-                    </h1>
-                  </div>
-                </div>
-              </div>
+    <div className="record-page" data-testid="record-page">
+      <div className="record-header">
+        <div className="record-header__row">
+          <div className="slds-media slds-media_center">
+            <div className="slds-media__figure">
+              <Icon name={layout.icon} size="medium" />
+            </div>
+            <div className="slds-media__body">
+              <p className="record-header__object">{describe.data.label}</p>
+              <h1 className="record-header__title slds-truncate" data-testid="record-title">
+                {recordTitle(data)}
+              </h1>
             </div>
           </div>
-          <div className="slds-page-header__col-actions">
-            <div className="slds-page-header__controls">
-              <ul className="slds-button-group-list">
-                {!converted && (
-                  <li>
-                    <button type="button" className="slds-button slds-button_neutral" data-testid="edit-record" onClick={() => setEditing(true)}>
-                      Edit
-                    </button>
-                  </li>
-                )}
-                {object === 'Lead' && !converted && (
-                  <li>
-                    <button type="button" className="slds-button slds-button_neutral" data-testid="convert-lead" onClick={() => setConverting(true)}>
-                      Convert
-                    </button>
-                  </li>
-                )}
-              </ul>
-            </div>
-          </div>
+          {actions.length > 0 && (
+            <ul className="slds-button-group-list">
+              {actions.map((action) => (
+                <li key={action.id}>
+                  <button type="button" className="slds-button slds-button_neutral" data-testid={action.id} onClick={action.run}>
+                    {action.label}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
-        <div className="slds-page-header__row slds-page-header__row_gutters">
-          <div className="slds-page-header__col-details">
-            <Highlights layout={layout} record={data} fields={fields} />
-          </div>
-        </div>
+        <Highlights layout={layout} record={data} fields={fields} />
       </div>
 
       {converted && <ConvertedBanner lead={data} />}
 
-      <div className="slds-grid slds-gutters_small">
-        <div className={`slds-col ${layout.activityField ? 'slds-size_8-of-12' : 'slds-size_1-of-1'}`}>
+      {hasPath && (
+        <div className="record-panel record-panel_path">
           {object === 'Lead' && !converted && <LeadPath lead={data} onConvert={() => setConverting(true)} />}
           {object === 'Opportunity' && stageField && <OpportunityPath opportunity={data} stages={stageField} />}
-          <article className="slds-card">
-            <div className="slds-card__body slds-card__body_inner">
-              <div className="slds-tabs_default">
-                <ul className="slds-tabs_default__nav" role="tablist">
-                  {(['details', 'related'] as const)
-                    .filter((t) => t === 'details' || layout.related.length > 0)
-                    .map((t) => (
-                      <li key={t} className={`slds-tabs_default__item ${tab === t ? 'slds-is-active' : ''}`} role="presentation">
-                        <a
-                          className="slds-tabs_default__link"
-                          href="#"
-                          role="tab"
-                          data-testid={`tab-${t}`}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setTab(t);
-                          }}
-                        >
-                          {t === 'details' ? 'Details' : 'Related'}
-                        </a>
-                      </li>
-                    ))}
-                </ul>
-                <div className="slds-tabs_default__content slds-show" role="tabpanel">
-                  {tab === 'details' ? (
-                    <Details layout={layout} record={data} fields={fields} />
-                  ) : (
-                    layout.related.map((list) => <RelatedCard key={list.title} list={list} parent={data} />)
-                  )}
-                </div>
-              </div>
+        </div>
+      )}
+
+      <div className="record-columns">
+        <div className="record-panel record-columns__main">
+          <div className="slds-tabs_default">
+            <ul className="slds-tabs_default__nav" role="tablist">
+              {(['details', 'related'] as const)
+                .filter((t) => t === 'details' || layout.related.length > 0)
+                .map((t) => (
+                  <li key={t} className={`slds-tabs_default__item ${tab === t ? 'slds-is-active' : ''}`} role="presentation">
+                    <a
+                      className="slds-tabs_default__link"
+                      href="#"
+                      role="tab"
+                      data-testid={`tab-${t}`}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        setTab(t);
+                      }}
+                    >
+                      {t === 'details' ? 'Details' : 'Related'}
+                    </a>
+                  </li>
+                ))}
+            </ul>
+            <div className="slds-tabs_default__content slds-show" role="tabpanel">
+              {tab === 'details' ? (
+                <Details layout={layout} record={data} fields={fields} onEdit={converted ? undefined : () => setEditing(true)} />
+              ) : (
+                layout.related.map((list) => <RelatedCard key={list.title} list={list} parent={data} />)
+              )}
             </div>
-          </article>
+          </div>
         </div>
         {layout.activityField && (
-          <div className="slds-col slds-size_4-of-12">
+          <div className="record-columns__side">
             <ActivityPanel record={data} link={layout.activityField} readOnly={converted} />
           </div>
         )}

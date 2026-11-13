@@ -1,0 +1,687 @@
+/*
+ * Salesforce Cosmos look (SLDS 2) layered over the SLDS 1 stylesheet.
+ * Values come from the measured org and the published Cosmos tokens (docs/fidelity/reference-study.md).
+ */
+:root {
+  --cosmos-font: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+  --cosmos-text: #03234d;
+  --cosmos-text-strong: #2e2e2e;
+  --cosmos-text-value: #181818;
+  --cosmos-text-weak: #5c5c5c;
+  --cosmos-page: #f3f3f3;
+  --cosmos-surface: #fff;
+  --cosmos-shade: #f3f3f3;
+  --cosmos-border: #c9c9c9;
+  --cosmos-border-strong: #5c5c5c;
+  --cosmos-brand: #066afe;
+  --cosmos-brand-dark: #0250d9;
+  --cosmos-brand-darker: #022ac0;
+  --cosmos-link: #0250d9;
+  --cosmos-navy: #032d60;
+  --cosmos-step: #e5e5e5;
+  --cosmos-success-bg: #acf3e4;
+  --cosmos-success-text: #056764;
+  --cosmos-radius-card: 1.25rem;
+  --cosmos-radius-input: 0.5rem;
+  --cosmos-radius-pill: 15rem;
+}
+
+body {
+  font-family: var(--cosmos-font);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  color: var(--cosmos-text);
+  background: var(--cosmos-page);
+}
+
+a {
+  color: var(--cosmos-link);
+}
+
+/* Global header */
+.slds-global-header {
+  height: 3.125rem;
+  padding: 0.5rem 1rem;
+}
+
+.slds-global-header__item_search {
+  flex: 0 1 37rem;
+}
+
+.slds-global-header__item_search .slds-input {
+  height: 2rem;
+  border-radius: var(--cosmos-radius-pill);
+  border-color: var(--cosmos-border);
+  background: var(--cosmos-surface);
+}
+
+.slds-global-header__item_search .slds-input[disabled] {
+  background: var(--cosmos-shade);
+}
+
+/* Sales navigation bar */
+.slds-context-bar {
+  height: 2.5rem;
+  padding: 0.25rem 0 0 0.75rem;
+  border-bottom: 0;
+  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.05);
+  color: var(--cosmos-text);
+}
+
+.slds-context-bar__app-name {
+  font-size: 1.25rem;
+  font-weight: 400;
+  padding-right: 1rem;
+}
+
+.slds-context-bar__secondary .slds-context-bar__item {
+  height: 2rem;
+  margin: 0 0.125rem;
+  font-weight: 500;
+}
+
+.slds-context-bar__secondary .slds-context-bar__label-action {
+  padding: 0 0.5rem;
+  color: var(--cosmos-text);
+}
+
+/* Cosmos runs SLDS's tab animation with a transparent end colour; the SLDS 1 one ends light blue. */
+.slds-context-bar__item:not(.slds-no-hover):hover,
+.slds-context-bar__item.slds-is-active {
+  background-color: transparent;
+  animation: none;
+}
+
+.slds-context-bar__item.slds-is-active:before {
+  display: none;
+}
+
+.slds-context-bar__secondary .slds-context-bar__item:after {
+  content: '';
+  display: block;
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  height: 3px;
+  border-radius: 0.75rem;
+  background: #001e5b;
+  opacity: 0;
+  mix-blend-mode: normal;
+}
+
+.slds-context-bar__secondary .slds-context-bar__item:not(.slds-no-hover):hover:after {
+  display: block;
+  opacity: 1;
+}
+
+.slds-context-bar__secondary .slds-context-bar__item.slds-is-active:after {
+  opacity: 1;
+  background: var(--cosmos-brand-dark);
+}
+
+.slds-context-bar__secondary .slds-context-bar__item.slds-is-active .slds-context-bar__label-action,
+.slds-context-bar__secondary .slds-context-bar__item.slds-is-active .nav-chevron {
+  color: var(--cosmos-brand-dark);
+  fill: var(--cosmos-brand-dark);
+}
+
+/* Cards and panels */
+.slds-card {
+  border: 1px solid transparent;
+  border-radius: var(--cosmos-radius-card);
+  box-shadow: none;
+  background: var(--cosmos-surface);
+}
+
+.slds-card_boundary {
+  border-color: var(--cosmos-border);
+}
+
+.slds-card__header-title {
+  font-size: 1.25rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--cosmos-text);
+}
+
+.slds-card__footer {
+  border-top: 1px solid var(--cosmos-border);
+  padding: 0.75rem 1rem;
+  margin: 0;
+}
+
+/* Buttons */
+.slds-button {
+  border-radius: var(--cosmos-radius-pill);
+  font-weight: 600;
+  line-height: 1.875rem;
+  color: var(--cosmos-brand-dark);
+}
+
+.slds-button_neutral,
+.slds-button_brand,
+.slds-button_outline-brand {
+  min-height: 2rem;
+  padding: 0 1rem;
+}
+
+.slds-button_neutral {
+  border-color: var(--cosmos-border-strong);
+  color: var(--cosmos-brand-dark);
+}
+
+/* Cosmos motion: bordered buttons lift 1.5px and brand buttons 2px on hover, and settle on press. */
+.slds-button:not([disabled]) {
+  transition: transform 150ms ease-in-out, box-shadow 150ms ease-in-out;
+}
+
+.slds-button:focus,
+.slds-button:focus-visible {
+  outline: 0;
+  box-shadow: 0 0 0 2px var(--cosmos-surface), 0 0 0 4px #001e5b;
+}
+
+.slds-button:focus:not(:focus-visible) {
+  box-shadow: none;
+}
+
+.slds-button:hover,
+.slds-button:active {
+  color: var(--cosmos-brand-darker);
+}
+
+.slds-button_neutral:hover,
+.slds-button_neutral:active,
+.slds-button_neutral:focus {
+  background: var(--cosmos-shade);
+  border-color: var(--cosmos-border-strong);
+  color: var(--cosmos-brand-darker);
+}
+
+.slds-button_neutral:not([disabled]):hover {
+  transform: translateY(-1.5px);
+  box-shadow: 0 1.5px 0 0 var(--cosmos-text-strong);
+}
+
+.slds-button_brand {
+  background: var(--cosmos-brand);
+  border-color: var(--cosmos-brand);
+  color: #fff;
+}
+
+.slds-button_brand:hover,
+.slds-button_brand:active,
+.slds-button_brand:focus {
+  background: var(--cosmos-brand-dark);
+  border-color: var(--cosmos-brand-dark);
+  color: #fff;
+}
+
+.slds-button_brand:not([disabled]):not(:focus-visible):hover {
+  transform: translateY(-2px);
+  box-shadow: 0 2px 0 0 #002775;
+}
+
+.slds-button_neutral:active,
+.slds-button_brand:active {
+  transform: none;
+  box-shadow: none;
+}
+
+.slds-button_neutral:focus-visible,
+.slds-button_brand:focus-visible {
+  box-shadow: inset 0 0 0 2px #001e5b, inset 0 0 0 4px #fff;
+}
+
+.slds-button_neutral:disabled {
+  background: #e5e5e5;
+  border-color: #757575;
+  color: #757575;
+}
+
+.slds-button_brand:disabled {
+  background: var(--cosmos-border);
+  border-color: var(--cosmos-border);
+  color: #757575;
+}
+
+.slds-button_icon-border-filled,
+.slds-button_icon-border {
+  width: 2.75rem;
+  height: 2rem;
+  border-color: var(--cosmos-border-strong);
+  border-radius: var(--cosmos-radius-pill);
+}
+
+.slds-button_icon-border-filled.slds-is-selected {
+  background: var(--cosmos-navy);
+  border-color: var(--cosmos-navy);
+}
+
+.slds-button_icon-border-filled.slds-is-selected .slds-button__icon {
+  fill: #fff;
+}
+
+.slds-button__icon {
+  fill: currentColor;
+}
+
+/* Joined pill groups */
+.slds-button-group-list > li .slds-button,
+.slds-button-group .slds-button {
+  border-radius: 0;
+}
+
+.slds-button-group-list > li:first-child .slds-button,
+.slds-button-group .slds-button:first-child {
+  border-radius: var(--cosmos-radius-pill) 0 0 var(--cosmos-radius-pill);
+}
+
+.slds-button-group-list > li:last-child .slds-button,
+.slds-button-group .slds-button:last-child {
+  border-radius: 0 var(--cosmos-radius-pill) var(--cosmos-radius-pill) 0;
+}
+
+.slds-button-group-list > li:only-child .slds-button,
+.slds-button-group .slds-button:only-child {
+  border-radius: var(--cosmos-radius-pill);
+}
+
+/* Form elements */
+.slds-input,
+.slds-select,
+.slds-textarea,
+.slds-combobox__input {
+  min-height: 2rem;
+  border-color: var(--cosmos-border-strong);
+  border-radius: var(--cosmos-radius-input);
+  color: var(--cosmos-text-value);
+}
+
+.slds-input[disabled],
+.slds-select[disabled],
+.slds-textarea[disabled] {
+  border-color: var(--cosmos-border);
+}
+
+.slds-form-element__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--cosmos-text-strong);
+}
+
+.slds-form-element__help {
+  font-size: 0.75rem;
+}
+
+.slds-radio .slds-radio_faux,
+.slds-checkbox .slds-checkbox_faux {
+  border-color: var(--cosmos-border-strong);
+}
+
+.slds-checkbox .slds-checkbox_faux {
+  border-radius: 0.25rem;
+}
+
+.slds-radio [type='radio']:checked + .slds-radio__label .slds-radio_faux,
+.slds-radio [type='radio']:checked + .slds-radio_faux {
+  border-color: var(--cosmos-brand);
+}
+
+.slds-radio [type='radio']:checked + .slds-radio__label .slds-radio_faux:after,
+.slds-radio [type='radio']:checked + .slds-radio_faux:after {
+  background: var(--cosmos-brand);
+}
+
+.slds-checkbox [type='checkbox']:checked + .slds-checkbox__label .slds-checkbox_faux,
+.slds-checkbox [type='checkbox']:checked + .slds-checkbox_faux {
+  background: var(--cosmos-brand);
+  border-color: var(--cosmos-brand);
+}
+
+.slds-checkbox [type='checkbox']:checked + .slds-checkbox__label .slds-checkbox_faux:after,
+.slds-checkbox [type='checkbox']:checked + .slds-checkbox_faux:after {
+  border-color: #fff;
+}
+
+/* Section bands */
+.slds-section__title {
+  font-size: 1.25rem;
+  line-height: 1.25;
+}
+
+.slds-section__title.slds-theme_shade,
+.slds-section__title-action {
+  height: 2rem;
+  border-radius: var(--cosmos-radius-input);
+  background: var(--cosmos-shade);
+  color: var(--cosmos-text);
+}
+
+.slds-section__title-action {
+  width: 100%;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+/* Tabs */
+.slds-tabs_default__nav {
+  border-bottom: 1px solid var(--cosmos-border);
+}
+
+.slds-tabs_default__item {
+  font-weight: 500;
+  color: var(--cosmos-text);
+}
+
+.slds-tabs_default__item.slds-is-active {
+  color: var(--cosmos-brand-dark);
+}
+
+.slds-tabs_default__item.slds-is-active:after,
+.slds-tabs_default__item:hover:after {
+  background-color: var(--cosmos-brand-dark);
+}
+
+.slds-tabs_default__link,
+.slds-tabs_default__link:hover {
+  color: inherit;
+}
+
+/* Data tables */
+.slds-table {
+  color: var(--cosmos-text-value);
+}
+
+.slds-table thead th {
+  height: 2rem;
+  background: var(--cosmos-shade);
+  color: var(--cosmos-text-weak);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.slds-table thead th .slds-th__action {
+  height: 2rem;
+  color: var(--cosmos-text-weak);
+}
+
+.slds-table thead th .slds-th__action:hover,
+.slds-table thead th .slds-th__action:focus {
+  background: #e5e5e5;
+}
+
+.slds-table_cell-buffer tr > th:first-child,
+.slds-table_cell-buffer tr > td:first-child {
+  padding-left: 0.75rem;
+}
+
+.slds-table tbody td,
+.slds-table tbody th {
+  height: 2.375rem;
+  padding-top: 0.5rem;
+  padding-bottom: 0.5rem;
+}
+
+.slds-table tbody a {
+  font-weight: 500;
+  color: var(--cosmos-link);
+}
+
+.slds-table_bordered {
+  border-top: 0;
+}
+
+.slds-table:not(.slds-no-row-hover) tbody tr:hover > td,
+.slds-table:not(.slds-no-row-hover) tbody tr:hover > th {
+  background-color: #edf4ff;
+}
+
+/* Path */
+.slds-path__nav .slds-path__item {
+  height: 2rem;
+}
+
+.slds-path__nav .slds-path__link {
+  font-weight: 400;
+}
+
+.slds-path__nav .slds-is-incomplete,
+.slds-path__nav .slds-is-incomplete:before,
+.slds-path__nav .slds-is-incomplete:after {
+  background: var(--cosmos-step);
+}
+
+.slds-path__nav .slds-is-incomplete .slds-path__link {
+  color: var(--cosmos-text-strong);
+}
+
+.slds-path__nav .slds-is-incomplete:hover,
+.slds-path__nav .slds-is-incomplete:hover:before,
+.slds-path__nav .slds-is-incomplete:hover:after {
+  background: #aeaeae;
+}
+
+.slds-path__nav .slds-is-complete,
+.slds-path__nav .slds-is-complete:before,
+.slds-path__nav .slds-is-complete:after,
+.slds-path__nav .slds-is-complete:hover,
+.slds-path__nav .slds-is-complete:hover:before,
+.slds-path__nav .slds-is-complete:hover:after {
+  background: var(--cosmos-success-bg);
+}
+
+.slds-path__nav .slds-is-complete .slds-path__link,
+.slds-path__nav .slds-is-complete .slds-path__stage .slds-button__icon {
+  color: var(--cosmos-success-text);
+  fill: var(--cosmos-success-text);
+}
+
+.slds-path__nav .slds-is-current:first-child {
+  border: 1px solid var(--cosmos-brand-darker);
+  border-right: 0;
+}
+
+.slds-path__nav .slds-is-current .slds-path__link {
+  color: var(--cosmos-brand-darker);
+}
+
+.slds-path__nav .slds-is-active,
+.slds-path__nav .slds-is-active:before,
+.slds-path__nav .slds-is-active:after,
+.slds-path__nav .slds-is-active:first-child:before,
+.slds-path__nav .slds-is-active:first-child:after {
+  background: var(--cosmos-navy);
+}
+
+.slds-path__nav .slds-is-active .slds-path__link {
+  color: #fff;
+}
+
+.slds-path__nav .slds-is-active.slds-is-complete .slds-path__stage .slds-button__icon {
+  fill: #fff;
+}
+
+.slds-path__nav .slds-path__item:first-child {
+  border-radius: 2rem 0 0 2rem;
+}
+
+.slds-path__nav .slds-path__item:last-child {
+  border-radius: 0 2rem 2rem 0;
+}
+
+.slds-path__mark-complete {
+  min-height: 1.875rem;
+}
+
+/* Modals */
+.slds-modal__container {
+  padding: 3rem 0;
+}
+
+.slds-modal_medium .slds-modal__container {
+  width: 52.5rem;
+  max-width: calc(100% - 4rem);
+}
+
+.slds-modal__header {
+  border-radius: var(--cosmos-radius-card) var(--cosmos-radius-card) 0 0;
+  border-bottom: 1px solid var(--cosmos-border);
+  padding: 1rem;
+}
+
+.slds-modal__title {
+  font-size: 1.25rem;
+  font-weight: 400;
+  color: var(--cosmos-text);
+}
+
+.slds-modal__content:last-child {
+  border-radius: 0 0 var(--cosmos-radius-card) var(--cosmos-radius-card);
+}
+
+.slds-modal__footer {
+  border-radius: 0 0 var(--cosmos-radius-card) var(--cosmos-radius-card);
+  border-top: 1px solid var(--cosmos-border);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(4px);
+  padding: 0.75rem 1rem;
+  box-shadow: none;
+}
+
+.slds-modal__close {
+  width: 2rem;
+  height: 2rem;
+  top: -2.5rem;
+  right: 0;
+  border-radius: var(--cosmos-radius-pill);
+  background: #fff;
+}
+
+.slds-modal__close .slds-button__icon {
+  fill: var(--cosmos-brand-dark);
+  width: 1rem;
+  height: 1rem;
+}
+
+/* The dialog fades in over 0.1s and the blurred backdrop over 0.4s, as in Lightning. */
+.slds-modal {
+  transition: opacity 0.1s linear;
+}
+
+.slds-backdrop {
+  background: rgba(46, 46, 46, 0.8);
+  backdrop-filter: blur(5px);
+  transition: opacity 0.4s linear;
+}
+
+.slds-backdrop_open {
+  opacity: 0.8;
+}
+
+/* Object icons are circles; Lead uses its Cosmos theme colour (the org's object theme, #06A59A). */
+.slds-icon_container[class*='slds-icon-standard-'] {
+  border-radius: 50%;
+}
+
+.slds-icon-standard-lead {
+  background-color: #06a59a;
+}
+
+/* Loading: brand blue bouncing dots on a 75% white overlay */
+.slds-spinner_container {
+  background: rgba(255, 255, 255, 0.75);
+}
+
+.slds-spinner_brand.slds-spinner:before,
+.slds-spinner_brand.slds-spinner:after,
+.slds-spinner_brand .slds-spinner__dot-a:before,
+.slds-spinner_brand .slds-spinner__dot-b:before,
+.slds-spinner_brand .slds-spinner__dot-a:after,
+.slds-spinner_brand .slds-spinner__dot-b:after {
+  background: var(--cosmos-brand);
+}
+
+/* Toasts */
+.slds-notify_toast {
+  border-radius: var(--cosmos-radius-input);
+}
+
+.slds-notify_toast.slds-theme_success {
+  background: var(--cosmos-success-bg);
+  color: var(--cosmos-success-text);
+}
+
+.slds-notify_toast.slds-theme_success .slds-icon,
+.slds-notify_toast.slds-theme_success .slds-button__icon {
+  fill: var(--cosmos-success-text);
+}
+
+/* Dropdowns, badges, pills */
+.slds-dropdown {
+  border-radius: 0.75rem;
+  border-color: var(--cosmos-border);
+}
+
+.slds-badge {
+  border-radius: var(--cosmos-radius-pill);
+}
+
+.slds-pill {
+  border-radius: var(--cosmos-radius-pill);
+}
+
+.slds-box {
+  border-radius: 0.75rem;
+}
+
+.slds-notify_alert {
+  border-radius: 0.75rem;
+}
+
+.slds-text-color_weak {
+  color: var(--cosmos-text-weak);
+}
+
+/* Page headers sit on the page background, as in Lightning */
+.slds-page-header {
+  border: 0;
+  box-shadow: none;
+  background: transparent;
+  padding: 1rem;
+}
+
+.slds-page-header__title {
+  font-size: 1.75rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--cosmos-text);
+}
+
+.slds-page-header__name-title h1 > span:first-child {
+  font-size: 0.8125rem;
+  color: #444;
+}
+
+.slds-page-header__meta-text {
+  font-size: 0.75rem;
+  color: var(--cosmos-text-weak);
+}
+
+/* Picklists show a single chevron, as Lightning comboboxes do */
+.slds-select_container:before,
+.slds-select_container:after {
+  display: none;
+}
+
+.slds-select_container .slds-select {
+  appearance: none;
+  padding-right: 2rem;
+  background: var(--cosmos-surface) no-repeat right 0.75rem center / 0.75rem
+    url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12'%3E%3Cpath d='M1.5 4l4.5 4.5L10.5 4' fill='none' stroke='%235c5c5c' stroke-width='1.6' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E");
+}
+
+.slds-select_container .slds-select[disabled] {
+  background-color: var(--cosmos-shade);
+}

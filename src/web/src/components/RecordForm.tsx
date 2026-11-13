@@ -12,6 +12,8 @@ import { useToast } from './Toast';
 
 const NUMERIC = new Set(['int', 'double', 'currency', 'percent']);
 const SYSTEM_FIELDS = new Set(['CreatedById', 'CreatedDate', 'LastModifiedById', 'LastModifiedDate']);
+/** Lightning groups these under one required "Name" label (the Name compound field). */
+const NAME_PARTS = ['Salutation', 'FirstName', 'LastName'];
 
 interface RecordFormProps {
   object: TabObject;
@@ -46,6 +48,15 @@ function toApiValue(field: FieldDescribe, value: FormValue): unknown {
   return value;
 }
 
+/** Replaces the run of name parts with one group, so they render as the Name compound field. */
+function groupNameParts(fields: FieldDescribe[]): (FieldDescribe | FieldDescribe[])[] {
+  const parts = fields.filter((f) => NAME_PARTS.includes(f.name));
+  if (parts.length < 2) return fields;
+  const first = fields.indexOf(parts[0]!);
+  const rest = fields.filter((f) => !NAME_PARTS.includes(f.name));
+  return [...rest.slice(0, first), parts, ...rest.slice(first)];
+}
+
 export function RecordForm({ object, record, initial = {}, onClose, onSaved }: RecordFormProps) {
   const describe = useDescribe(object);
   const { current } = useActingUser();
@@ -74,7 +85,7 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
       : {});
 
   const save = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (_options: { andNew: boolean }) => {
       const payload: Record<string, unknown> = {};
       for (const field of describe.data!.fields) {
         if (!visible(field)) continue;
@@ -93,11 +104,12 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
       }
       return (await api.create(object, payload)).id;
     },
-    onSuccess: async (id) => {
+    onSuccess: async (id, { andNew }) => {
       await refreshRecords(queryClient);
       const saved = await queryClient.fetchQuery({ queryKey: ['record', object, id], queryFn: () => api.get(object, id) });
       toast(`${describe.data!.label} "${recordTitle(saved)}" was ${editing ? 'saved' : 'created'}.`);
-      onSaved(id);
+      if (andNew) setValues(null);
+      else onSaved(id);
     },
   });
 
@@ -105,29 +117,57 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
   const fieldErrors = (name: string) =>
     (error?.fieldErrors(name) ?? []).map((e) => (e.errorCode === 'REQUIRED_FIELD_MISSING' ? 'Complete this field.' : e.message));
 
+  const input = (field: FieldDescribe) => (
+    <FieldInput
+      key={field.name}
+      field={field}
+      value={formValues[field.name] ?? null}
+      required={field.required}
+      disabled={editing && !field.updateable}
+      errors={fieldErrors(field.name)}
+      onChange={(value) => setValues({ ...formValues, [field.name]: value })}
+    />
+  );
+
   const title = editing ? `Edit ${recordTitle(record)}` : `New ${describe.data?.label ?? object}`;
 
   return (
     <Modal
       title={title}
       onClose={onClose}
-      size="large"
       footer={
         <>
           <button type="button" className="slds-button slds-button_neutral" onClick={onClose}>
             Cancel
           </button>
+          {!editing && (
+            <button
+              type="button"
+              className="slds-button slds-button_neutral"
+              data-testid="save-and-new"
+              disabled={!describe.data || save.isPending}
+              onClick={() => save.mutate({ andNew: true })}
+            >
+              Save &amp; New
+            </button>
+          )}
           <button
             type="button"
             className="slds-button slds-button_brand"
             disabled={!describe.data || save.isPending}
-            onClick={() => save.mutate()}
+            onClick={() => save.mutate({ andNew: false })}
           >
             Save
           </button>
         </>
       }
     >
+      <p className="form-legend">
+        <abbr className="slds-required" title="required">
+          *
+        </abbr>{' '}
+        = Required Information
+      </p>
       <PageError error={save.error} />
       {layout.sections
         .filter((section) => section.fields.some((name) => visible(fieldMap.get(name))))
@@ -137,21 +177,25 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
               <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
             </h3>
             <div className="slds-section__content slds-grid slds-wrap slds-gutters_small">
-              {section.fields
-                .map((name) => fieldMap.get(name))
-                .filter(visible)
-                .map((field) => (
-                  <div key={field.name} className={`slds-col ${field.type === 'textarea' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
-                    <FieldInput
-                      field={field}
-                      value={formValues[field.name] ?? null}
-                      required={field.required}
-                      disabled={editing && !field.updateable}
-                      errors={fieldErrors(field.name)}
-                      onChange={(value) => setValues({ ...formValues, [field.name]: value })}
-                    />
+              {groupNameParts(section.fields.map((name) => fieldMap.get(name)).filter(visible)).map((item) =>
+                Array.isArray(item) ? (
+                  <div key="Name" className="slds-col slds-size_1-of-2">
+                    <fieldset className="slds-form-element slds-form-element_compound" data-testid="field-Name-compound">
+                      <legend className="slds-form-element__legend slds-form-element__label">
+                        <abbr className="slds-required" title="required">
+                          *{' '}
+                        </abbr>
+                        Name
+                      </legend>
+                      {item.map(input)}
+                    </fieldset>
                   </div>
-                ))}
+                ) : (
+                  <div key={item.name} className={`slds-col ${item.type === 'textarea' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
+                    {input(item)}
+                  </div>
+                ),
+              )}
             </div>
           </div>
         ))}

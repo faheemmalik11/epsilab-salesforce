@@ -11,6 +11,10 @@ export function useFieldMap(object: ObjectName): Map<string, FieldDescribe> | un
   return describe.data ? new Map(describe.data.fields.map((f) => [f.name, f])) : undefined;
 }
 
+export function useClock() {
+  return useQuery({ queryKey: ['clock'], queryFn: api.clock, staleTime: 60_000 });
+}
+
 export function useRecord(object: ObjectName, id: string) {
   return useQuery({ queryKey: ['record', object, id], queryFn: () => api.get(object, id) });
 }

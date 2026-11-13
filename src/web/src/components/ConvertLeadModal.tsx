@@ -2,7 +2,7 @@ import { useState, type ReactNode } from 'react';
 import { Link } from 'react-router';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api/client';
-import { useDescribe, refreshRecords } from '../api/hooks';
+import { useDescribe, useRecordQuery, refreshRecords } from '../api/hooks';
 import type { ConvertResult, SRecord } from '../api/types';
 import { useActingUser } from '../context/ActingUser';
 import { recordUrl } from './FieldOutput';
@@ -10,15 +10,30 @@ import { Icon } from './Icon';
 import { Lookup, type LookupValue } from './Lookup';
 import { Modal } from './Modal';
 import { PageError } from './PageError';
+import { STUB_TEXT, StubBadge } from './Stub';
+import { formatNumber } from '../lib/format';
 
-function Section({ icon, title, children }: { icon: string; title: string; children: ReactNode }) {
+function Radio({ id, name, label, checked, disabled, onChange }: { id: string; name: string; label: string; checked: boolean; disabled?: boolean; onChange?(): void }) {
   return (
-    <fieldset className="slds-box slds-m-bottom_small">
-      <legend className="slds-text-heading_small slds-p-horizontal_x-small">
-        <Icon name={icon} size="small" /> <span className="slds-m-left_x-small">{title}</span>
-      </legend>
-      {children}
-    </fieldset>
+    <span className="slds-radio">
+      <input type="radio" id={id} name={name} checked={checked} disabled={disabled} onChange={onChange} />
+      <label className="slds-radio__label" htmlFor={id}>
+        <span className="slds-radio_faux" />
+        <span className="slds-form-element__label">{label}</span>
+      </label>
+    </span>
+  );
+}
+
+/** One Convert Lead row: the object, "Create New" on the left, "- OR -", and "Choose Existing" on the right. */
+function ConvertRow({ title, left, right }: { title: string; left: ReactNode; right: ReactNode }) {
+  return (
+    <div className="convert-row" data-testid={`convert-row-${title}`}>
+      <h2 className="convert-row__title">{title}</h2>
+      <div className="convert-row__side">{left}</div>
+      <div className="convert-row__or">- OR -</div>
+      <div className="convert-row__side">{right}</div>
+    </div>
   );
 }
 
@@ -82,6 +97,18 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
   const [ownerId, setOwnerId] = useState(String(lead.OwnerId ?? ''));
   const [status, setStatus] = useState<string>('');
 
+  const matches = useRecordQuery({
+    object: 'Account',
+    where: [{ field: 'Name', op: 'contains', value: company }],
+    orderBy: [{ field: 'Name' }],
+    limit: 5,
+  }, company !== '');
+  const matchList = matches.data?.records ?? [];
+  const chooseAccount = (value: LookupValue | null) => {
+    setAccount(value);
+    if (value) setAccountMode('existing');
+  };
+
   const convert = useMutation({
     mutationFn: () =>
       api.convertLead(lead.Id, {
@@ -100,7 +127,6 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
     <Modal
       title="Convert Lead"
       onClose={onClose}
-      size="large"
       footer={
         <>
           <button type="button" className="slds-button slds-button_neutral" onClick={onClose}>
@@ -120,74 +146,125 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
     >
       <PageError error={convert.error} />
 
-      <Section icon="account" title="Account">
-        <fieldset className="slds-form-element">
-          <div className="slds-form-element__control">
-            <span className="slds-radio">
-              <input type="radio" id="account-new" name="account" checked={accountMode === 'new'} onChange={() => setAccountMode('new')} />
-              <label className="slds-radio__label" htmlFor="account-new">
-                <span className="slds-radio_faux" />
-                <span className="slds-form-element__label">Create New: {company}</span>
+      <ConvertRow
+        title="Account"
+        left={
+          <>
+            <Radio id="account-new" name="account" label="Create New Account" checked={accountMode === 'new'} onChange={() => setAccountMode('new')} />
+            <div className="convert-box">
+              <label className="slds-form-element__label" htmlFor="convert-account-name">
+                <abbr className="slds-required" title="required">
+                  *{' '}
+                </abbr>
+                Account Name
               </label>
-            </span>
-            <span className="slds-radio">
               <input
-                type="radio"
-                id="account-existing"
-                name="account"
-                checked={accountMode === 'existing'}
-                onChange={() => setAccountMode('existing')}
+                id="convert-account-name"
+                className="slds-input"
+                value={company}
+                readOnly
+                title="The new account is named after the lead's Company"
               />
-              <label className="slds-radio__label" htmlFor="account-existing">
-                <span className="slds-radio_faux" />
-                <span className="slds-form-element__label">Choose Existing</span>
-              </label>
+            </div>
+          </>
+        }
+        right={
+          <>
+            <Radio
+              id="account-existing"
+              name="account"
+              label="Choose Existing Account"
+              checked={accountMode === 'existing'}
+              onChange={() => setAccountMode('existing')}
+            />
+            <div className="convert-box convert-box_plain">
+              <span className="slds-form-element__label">
+                <abbr className="slds-required" title="required">
+                  *{' '}
+                </abbr>
+                Account Search
+              </span>
+              <Lookup id="convert-account" targets={['Account']} value={account} onChange={chooseAccount} />
+              <div className="convert-matches" data-testid="account-matches">
+                <p className="slds-text-color_weak">
+                  {matches.data ? `${formatNumber(matches.data.totalSize)} Account Match${matches.data.totalSize === 1 ? '' : 'es'}` : 'Searching…'}
+                </p>
+                {matchList.map((match) => (
+                  <Radio
+                    key={match.Id}
+                    id={`account-match-${match.Id}`}
+                    name="account-match"
+                    label={String(match.Name)}
+                    checked={account?.id === match.Id}
+                    onChange={() => chooseAccount({ id: match.Id, name: String(match.Name), object: 'Account' })}
+                  />
+                ))}
+              </div>
+            </div>
+          </>
+        }
+      />
+
+      <ConvertRow
+        title="Contact"
+        left={
+          <>
+            <Radio id="contact-new" name="contact" label="Create New Contact" checked />
+            <span className="convert-pill" data-testid="convert-contact-name">
+              {String(lead.Name ?? '')}
             </span>
-          </div>
-        </fieldset>
-        {accountMode === 'existing' && (
-          <div className="slds-m-top_x-small">
-            <Lookup id="convert-account" targets={['Account']} value={account} onChange={setAccount} />
-          </div>
-        )}
-      </Section>
+          </>
+        }
+        right={
+          <>
+            <Radio id="contact-existing" name="contact" label="Choose Existing Contact" checked={false} disabled />
+            <p className="convert-disabled" title={STUB_TEXT}>
+              Choosing an existing contact: {STUB_TEXT}
+              <StubBadge />
+            </p>
+          </>
+        }
+      />
 
-      <Section icon="contact" title="Contact">
-        <p>
-          Create New: <strong>{String(lead.Name ?? '')}</strong>
-        </p>
-        <p className="slds-text-color_weak slds-text-body_small">Converting into an existing contact is not supported in this trial.</p>
-      </Section>
-
-      <Section icon="opportunity" title="Opportunity">
-        <div className="slds-form-element">
-          <label className="slds-form-element__label" htmlFor="convert-opportunity-name">
-            Opportunity Name
-          </label>
-          <div className="slds-form-element__control">
+      <ConvertRow
+        title="Opportunity"
+        left={
+          <>
+            <Radio id="opportunity-new" name="opportunity" label="Create New Opportunity" checked={!noOpportunity} onChange={() => setNoOpportunity(false)} />
             <input
               id="convert-opportunity-name"
-              className="slds-input"
+              aria-label="Opportunity Name"
+              className="slds-input convert-pill-input"
               value={opportunityName}
               disabled={noOpportunity}
               onChange={(e) => setOpportunityName(e.target.value)}
             />
-          </div>
-        </div>
-        <div className="slds-form-element slds-m-top_x-small">
-          <div className="slds-checkbox">
-            <input type="checkbox" id="convert-no-opportunity" checked={noOpportunity} onChange={(e) => setNoOpportunity(e.target.checked)} />
-            <label className="slds-checkbox__label" htmlFor="convert-no-opportunity">
-              <span className="slds-checkbox_faux" />
-              <span className="slds-form-element__label">Don't create an opportunity upon conversion</span>
-            </label>
-          </div>
-        </div>
-      </Section>
+            <div className="slds-checkbox convert-no-opportunity">
+              <input type="checkbox" id="convert-no-opportunity" checked={noOpportunity} onChange={(e) => setNoOpportunity(e.target.checked)} />
+              <label className="slds-checkbox__label" htmlFor="convert-no-opportunity">
+                <span className="slds-checkbox_faux" />
+                <span className="slds-form-element__label">Don't create an opportunity upon conversion</span>
+              </label>
+            </div>
+          </>
+        }
+        right={
+          <>
+            <Radio id="opportunity-existing" name="opportunity" label="Choose Existing Opportunity" checked={false} disabled />
+            <p className="convert-disabled" title={STUB_TEXT}>
+              Choosing an existing opportunity: {STUB_TEXT}
+              <StubBadge />
+            </p>
+          </>
+        }
+      />
 
-      <div className="slds-grid slds-gutters">
-        <div className="slds-col slds-form-element">
+      <div className="convert-footer-fields">
+        <div className="slds-form-element">
           <label className="slds-form-element__label" htmlFor="convert-owner">
+            <abbr className="slds-required" title="required">
+              *{' '}
+            </abbr>
             Record Owner
           </label>
           <div className="slds-select_container">
@@ -202,7 +279,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
             </select>
           </div>
         </div>
-        <div className="slds-col slds-form-element">
+        <div className="slds-form-element">
           <label className="slds-form-element__label" htmlFor="convert-status">
             <abbr className="slds-required" title="required">
               *{' '}

@@ -37,34 +37,28 @@ function useTasks(record: SRecord, link: 'WhoId' | 'WhatId') {
 
 function Timeline({ tasks }: { tasks: SRecord[] }) {
   if (tasks.length === 0) {
-    return <p className="slds-text-color_weak slds-p-around_small">No activities to show.</p>;
+    return <p className="slds-text-color_weak slds-p-vertical_small">No activities to show.</p>;
   }
   return (
-    <ul className="slds-timeline" data-testid="activity-timeline">
+    <ul className="activity-timeline" data-testid="activity-timeline">
       {tasks.map((task) => {
         const call = task.TaskSubtype === 'Call';
         return (
-          <li key={task.Id} data-testid="timeline-item">
-            <div className={`slds-timeline__item_expandable ${call ? 'slds-timeline__item_call' : 'slds-timeline__item_task'}`}>
-              <div className="slds-media">
-                <div className="slds-media__figure">
-                  <Icon name={call ? 'log_a_call' : 'task'} size="small" className="slds-timeline__icon" />
-                </div>
-                <div className="slds-media__body">
-                  <div className="slds-grid slds-grid_align-spread slds-timeline__trigger">
-                    <h3 className="slds-truncate">
-                      <Link to={recordUrl('Task', task.Id)}>
-                        <strong>{String(task.Subject ?? '(no subject)')}</strong>
-                      </Link>
-                    </h3>
-                    <p className="slds-timeline__date">{formatValue('date', task.ActivityDate)}</p>
-                  </div>
-                  <p className="slds-m-horizontal_xx-small slds-text-body_small">
-                    {String(task.Status)}
-                    {task.Description ? ` • ${String(task.Description)}` : ''}
-                  </p>
-                </div>
+          <li key={task.Id} className="activity-timeline__item" data-testid="timeline-item">
+            <span className="activity-timeline__icon">
+              <Icon name={call ? 'log_a_call' : 'task'} size="small" />
+            </span>
+            <div className="activity-timeline__body">
+              <div className="activity-timeline__head">
+                <Link className="slds-truncate" to={recordUrl('Task', task.Id)}>
+                  {String(task.Subject ?? '(no subject)')}
+                </Link>
+                <span className="activity-timeline__date">{formatValue('date', task.ActivityDate)}</span>
               </div>
+              <p className="activity-timeline__detail">
+                {String(task.Status)}
+                {task.Description ? ` • ${String(task.Description)}` : ''}
+              </p>
             </div>
           </li>
         );
@@ -103,49 +97,45 @@ export function ActivityPanel({ record, link, readOnly }: ActivityPanelProps) {
     },
   });
 
-  const tabs: { id: Composer | 'event' | 'email'; label: string; stub?: boolean }[] = [
-    { id: 'call', label: 'Log a Call' },
-    { id: 'task', label: 'New Task' },
-    { id: 'event', label: 'New Event', stub: true },
-    { id: 'email', label: 'Email', stub: true },
+  const actions: { id: Composer | 'email' | 'event'; label: string; icon: string; stub?: boolean }[] = [
+    { id: 'email', label: 'Email', icon: 'email', stub: true },
+    { id: 'event', label: 'New Event', icon: 'event', stub: true },
+    { id: 'call', label: 'Log a Call', icon: 'log_a_call' },
+    { id: 'task', label: 'New Task', icon: 'task' },
   ];
 
   return (
-    <article className="slds-card" data-testid="activity-panel">
-      <div className="slds-card__header slds-grid">
-        <header className="slds-media slds-media_center slds-has-flexi-truncate">
-          <h2 className="slds-card__header-title">Activity</h2>
-        </header>
+    <article className="slds-card activity-panel" data-testid="activity-panel">
+      <div className="slds-card__header">
+        <h2 className="slds-card__header-title">Activity</h2>
       </div>
       <div className="slds-card__body slds-card__body_inner">
         {!readOnly && (
-          <div className="slds-tabs_default slds-m-bottom_medium activity-tabs">
-            <ul className="slds-tabs_default__nav" role="tablist">
-              {tabs.map((tab) => (
-                <li
-                  key={tab.id}
-                  className={`slds-tabs_default__item ${composer === tab.id ? 'slds-is-active' : ''}`}
-                  title={tab.stub ? STUB_TEXT : tab.label}
-                  role="presentation"
+          <div className="activity-composer">
+            <div className="activity-actions" role="tablist" aria-label="Activity composer">
+              {actions.map((action) => (
+                <button
+                  key={action.id}
+                  type="button"
+                  role="tab"
+                  aria-selected={composer === action.id}
+                  className={`activity-action ${composer === action.id ? 'activity-action_active' : ''}`}
+                  disabled={action.stub}
+                  title={action.stub ? `${action.label}: ${STUB_TEXT}` : action.label}
+                  data-testid={`composer-${action.id}`}
+                  onClick={() => !action.stub && setComposer(action.id as Composer)}
                 >
-                  <a
-                    className={`slds-tabs_default__link ${tab.stub ? 'slds-text-color_weak' : ''}`}
-                    href="#"
-                    role="tab"
-                    aria-disabled={tab.stub || undefined}
-                    data-testid={`composer-${tab.id}`}
-                    onClick={(e) => {
-                      e.preventDefault();
-                      if (!tab.stub) setComposer(tab.id as Composer);
-                    }}
-                  >
-                    {tab.label}
-                    {tab.stub && <StubBadge />}
-                  </a>
-                </li>
+                  <Icon name={action.icon} size="small" />
+                  <span className="slds-assistive-text">{action.stub ? `${action.label}: ${STUB_TEXT}` : action.label}</span>
+                </button>
               ))}
-            </ul>
-            <div className="slds-tabs_default__content slds-show" role="tabpanel">
+            </div>
+            <p className="activity-stub-note">
+              Email and New Event: {STUB_TEXT}
+              <StubBadge />
+            </p>
+            <div role="tabpanel" className="activity-form">
+              <h3 className="activity-form__title">{composer === 'call' ? 'Log a Call' : 'New Task'}</h3>
               <PageError error={save.error} />
               {composer === 'call' ? (
                 <>
@@ -192,7 +182,7 @@ export function ActivityPanel({ record, link, readOnly }: ActivityPanelProps) {
             </div>
           </div>
         )}
-        <h3 className="slds-text-title_caps slds-m-bottom_x-small">Activity History</h3>
+        <h3 className="activity-history__title">Activity History</h3>
         <Timeline tasks={tasks.data ?? []} />
       </div>
     </article>

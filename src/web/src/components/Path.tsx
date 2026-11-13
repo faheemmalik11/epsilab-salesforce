@@ -23,7 +23,7 @@ export function Path({ steps, currentIndex, currentText, action, busy }: PathPro
   const act = selectedIndex >= 0 ? action(selectedIndex) : null;
 
   return (
-    <div className="slds-path slds-m-bottom_small" data-testid="path">
+    <div className="slds-path" data-testid="path">
       <div className="slds-grid slds-path__track">
         <div className="slds-grid slds-path__scroller-container">
           <div className="slds-path__scroller">

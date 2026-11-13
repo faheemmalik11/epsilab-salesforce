@@ -1,4 +1,4 @@
-import { expect, expectHealthy, restCount, restGet, saveModal, test } from './fixtures';
+import { expect, expectHealthy, restCount, restCreate, restGet, saveModal, test } from './fixtures';
 
 const TABS = [
   ['Leads', 'Lead'],
@@ -25,6 +25,29 @@ test('navigation reaches every object list and the home page, with no errors', a
   await page.getByTestId('tab-related').click();
   await expect(page.getByTestId('related-Contact')).toBeVisible();
   expectHealthy(health);
+});
+
+test('Seller Home shows the six cards, with live pipeline and tasks and marked stubs', async ({ page, api, health }) => {
+  await page.goto('/lightning/page/home');
+  await expect(page.getByTestId('home-greeting')).toContainText("Let's get selling!");
+  for (const card of ['build-pipeline', 'goals', 'events', 'todays-tasks', 'recent-records', 'salesblazer']) {
+    await expect(page.getByTestId(`home-${card}`)).toBeVisible();
+  }
+  for (const card of ['goals', 'events', 'salesblazer']) {
+    await expect(page.getByTestId(`home-${card}`).getByTestId('stub-badge')).toBeVisible();
+  }
+  const count = Number(await page.getByTestId('pipeline-count').locator('.pipeline__count').textContent({ timeout: 10_000 }));
+  const leadId = await restCreate(api, 'Lead', { LastName: 'Pipeline', Company: 'Home Co' });
+  const clock = await (await api.get('/api/admin/clock')).json();
+  const taskId = await restCreate(api, 'Task', { Subject: 'Home task today', WhoId: leadId, ActivityDate: clock.today });
+  await page.reload();
+  await expect(page.getByTestId('pipeline-count')).toContainText(`${count + 1}`);
+  await expect(page.getByTestId('pipeline-upcoming')).not.toContainText('…');
+  await expect(page.getByTestId('home-todays-tasks').getByTestId('home-task').filter({ hasText: 'Home task today' })).toBeVisible();
+  await expect(page.getByTestId('home-recent-records')).toContainText('Pipeline');
+  expectHealthy(health);
+  // Later tests count unconverted leads, so leave none behind.
+  for (const [object, id] of [['Task', taskId], ['Lead', leadId]]) expect((await api.delete(`/api/sobjects/${object}/${id}`)).status()).toBe(204);
 });
 
 test('out-of-scope entry points are visibly marked as stubs', async ({ page, health }) => {
@@ -74,7 +97,7 @@ for (const width of [1280, 1440, 1920]) {
       });
     await page.goto('/lightning/page/home');
     await expect(page.getByTestId('home-page')).toBeVisible();
-    await expect(page.getByTestId('data-row').first()).toBeVisible();
+    await expect(page.getByTestId('home-recent-record').first()).toBeVisible();
     expect(await noHorizontalScroll(), 'home').toBe(true);
     for (const url of ['/lightning/o/Lead/list', '/lightning/o/Opportunity/list']) {
       await page.goto(url);

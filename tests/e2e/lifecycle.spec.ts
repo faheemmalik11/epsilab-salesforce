@@ -17,7 +17,7 @@ async function convertFromRecordPage(page: Page, options: { existingAccount?: st
   const dialog = page.getByRole('dialog', { name: 'Convert Lead' });
   await expect(dialog).toBeVisible();
   if (options.existingAccount) {
-    await checkByLabel(dialog, 'Choose Existing');
+    await checkByLabel(dialog, 'Choose Existing Account');
     await pickLookup(page, 'convert-account', options.existingAccount);
   }
   if (options.noOpportunity) await checkByLabel(dialog, "Don't create an opportunity upon conversion");

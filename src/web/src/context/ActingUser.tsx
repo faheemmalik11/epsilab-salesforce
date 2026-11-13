@@ -2,6 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, setActingUser } from '../api/client';
 import type { User } from '../api/types';
+import { Spinner } from '../components/Spinner';
 
 const STORAGE_KEY = 'actingUserId';
 
@@ -62,13 +63,7 @@ export function ActingUserProvider({ children }: { children: ReactNode }) {
 
   if (!current) {
     return (
-      <div className="slds-spinner_container">
-        <div role="status" className="slds-spinner slds-spinner_medium">
-          <span className="slds-assistive-text">Loading</span>
-          <div className="slds-spinner__dot-a" />
-          <div className="slds-spinner__dot-b" />
-        </div>
-      </div>
+      <Spinner overlay />
     );
   }
   return <ActingUserContext.Provider value={value}>{children}</ActingUserContext.Provider>;

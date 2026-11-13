@@ -82,3 +82,9 @@ export interface ConvertResult {
   contactId: string;
   opportunityId: string | null;
 }
+
+/** The app clock; every date the GUI treats as "today" comes from here, not the browser. */
+export interface ClockInfo {
+  now: string;
+  today: string;
+}

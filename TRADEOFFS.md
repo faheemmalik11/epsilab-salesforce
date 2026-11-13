@@ -29,6 +29,12 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | Reset is fully synchronous inside the Node process | No request can run between closing and reopening the database, which is the app-level lock the plan called for |
 | Snapshots are checked against their recorded sha256 before use; a damaged snapshot is refused and nothing changes | A reset must never leave a half-restored database |
 | A baseline per `SEED_PROFILE` is built into the image; start-up copies the chosen one to the working database | `SEED_PROFILE` now takes effect at runtime without a rebuild, and start-up runs no SQL writes |
+| The Lightning Cosmos look (SLDS 2) is recreated by `src/web/src/cosmos.css` over the BSD-licensed SLDS 1 package | Option B from the Phase 6b study: values measured in a real org and read from the published Cosmos tokens, without taking on the SLDS 2 licence terms |
+| Seller Home follows the brief's screenshot: Build Pipeline, Today's Tasks and Recent Records are live | They read our own data through the same REST API as every other screen |
+| Build Pipeline is computed in the browser from two existing queries (my open leads newest first, then their tasks) | The query API has no date-range operator; this avoids changing the API for one card |
+| "Search this list" filters on the list's name column with the existing `contains` operator, kept in the URL as `q` | Lightning searches the list as you type; no new API was needed |
+| The pencil on each detail field opens the existing Edit form at that record | It gives Lightning's inline-edit entry point without a second editing path |
+| Save & New in the New form, and an Edit row action in list views | Both are on the Lightning surfaces the brief reviews and reuse the same form and API calls |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
 ## Stubbed
@@ -41,14 +47,20 @@ Each stub is visibly marked in the UI with a **Stub** badge or "Not available in
 | Global search box (disabled) | Search is not part of the brief's workflow |
 | App Launcher icon (inert) | Only the Sales app exists |
 | "Recently Viewed" and "All Open …" list views (disabled in the picker) | AC2 needs All Leads; All and My views are built |
-| New Event and Email tabs in the activity composer | Events and real email are out of scope in the brief |
+| New Event and Email buttons in the activity composer | Events and real email are out of scope in the brief |
+| Seller Home cards My Goals, Today's Events and Salesblazer, and Recent Records "View All" | Goals, events, community content and view history are out of scope |
+| List view toolbar buttons List View Controls, Display as Table, Edit List and Show charts, and Pin this list view | List view administration and charts are out of scope; Refresh and Filters are live |
+| "Choose Existing Contact" and "Choose Existing Opportunity" in the Convert dialog | The brief's conversion creates a contact and an optional new opportunity |
 
 ## Skipped
 
 | Item | Reason |
 |---|---|
-| Converting a lead into an existing contact | The brief says conversion "creates a Contact"; the Convert dialog states this |
-| Inline editing, mass actions (Change Status, Change Owner) and record deletion in the GUI | Not needed by the brief's workflow; delete stays available through REST and MCP |
+| Converting a lead into an existing contact | The brief says conversion "creates a Contact"; the Convert dialog marks it as a stub |
+| Renaming the new account in the Convert dialog | The convert API names the account after the lead's Company, as Salesforce does by default; the field is shown read-only |
+| True inline editing, mass actions (Change Status, Change Owner) and record deletion in the GUI | Not needed by the brief's workflow; list checkboxes only count the selection, and delete stays available through REST and MCP |
+| Tasks split view (list on the left, task on the right) | Skipped for Phase 6b by agreement; Tasks keeps the standard list view and record page |
+| Dropdown menus on the navigation tabs (recent items) | The chevrons are shown for fidelity but open nothing; each tab still opens its list |
 | Attaching a conversion to an existing opportunity (`opportunityId`) | Not required by the lifecycle; the opportunity is optional and new |
 | Email notification on conversion | Real email sending is out of scope in the brief |
 
@@ -78,6 +90,11 @@ Each one is recorded with its source in `docs/reference/`.
 | Referential integrity is checked in the service layer, not with SQLite foreign keys | Task.WhoId and Task.WhatId are polymorphic, and the service returns Salesforce-style errors |
 | Name on Lead, Contact and User is stored, and kept in sync by the service layer | List views sort and search by it without computing it per row |
 | List sorting on text is case-insensitive (NOCASE) | Salesforce list views sort case-insensitively |
+| Object icons are circles in the standard SLDS colours, except Lead, which uses its Cosmos theme colour #06A59A | Measured in the real org (object theme info); the other objects match the sprite colours |
+| Recent Records shows the most recently modified leads, accounts, contacts and opportunities, newest Id first on ties | There is no view history; with the fixed test clock many records share a timestamp |
+| The Home greeting uses the app clock's UTC hour | All app dates come from the app clock, not the browser |
+| Button hover, press and focus, the spinner, the modal fade and the blurred backdrop use the Cosmos values measured in the org | The user asked for loaders, animations, buttons and icons to match Salesforce |
+| The Seller Home empty states use SLDS's own illustrations, unmodified (CC BY-ND 4.0, credited in the README) | No artwork is copied from Salesforce's product pages; SLDS's icons are under the same licence |
 | Account Type uses the 10 standard values; the help article's extra "Consulting" entry is left out | It appears at the boundary with the Industry list and looks like a formatting artefact |
 | Errors are reported in Salesforce's order: field and required-field errors together first, then business rules such as the Amount rule | Salesforce runs system validation before validation rules |
 | A field with a bad value is reported once, not also as a missing required field | One problem, one error |

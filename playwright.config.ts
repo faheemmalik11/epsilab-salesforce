@@ -22,7 +22,10 @@ export default defineConfig({
     ? undefined
     : {
         // A fresh database for every run, so tests always start from the 21,628-lead baseline.
-        command: 'node dist/server/scripts/build-db.js && node dist/server/src/server/main.js',
+        // The server keeps an existing working database, so the data folder is removed first.
+        command:
+          `node -e "require('fs').rmSync('.e2e-data', { recursive: true, force: true })"` +
+          ' && node dist/server/scripts/build-db.js && node dist/server/src/server/main.js',
         url: `http://localhost:${GUI_PORT}`,
         reuseExistingServer: false,
         timeout: 60_000,

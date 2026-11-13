@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { NavLink } from 'react-router';
 import { useActingUser } from '../context/ActingUser';
 import { LAYOUTS, TAB_ORDER } from '../lib/layouts';
+import { iconHref } from '../icons';
 import { ButtonIcon, Icon } from './Icon';
 import { STUB_TEXT, StubBadge } from './Stub';
 
@@ -71,12 +72,18 @@ function UserSwitcher() {
   );
 }
 
-function NavItem({ to, label, stub }: { to: string; label: string; stub?: boolean }) {
+/** Object tabs carry the Lightning dropdown chevron; it is decorative here because recent-item menus are out of scope. */
+function NavItem({ to, label, stub, chevron }: { to: string; label: string; stub?: boolean; chevron?: boolean }) {
   return (
-    <NavLink to={to} className={({ isActive }) => `slds-context-bar__item ${isActive ? 'slds-is-active' : ''}`}>
+    <NavLink to={to} className={({ isActive }) => `slds-context-bar__item ${stub ? 'nav-stub' : ''} ${isActive ? 'slds-is-active' : ''}`}>
       <span className="slds-context-bar__label-action" title={stub ? `${label}: ${STUB_TEXT}` : label}>
         <span className="slds-truncate">{label}</span>
         {stub && <StubBadge />}
+        {chevron && (
+          <svg className="nav-chevron" aria-hidden="true">
+            <use href={iconHref('utility', 'chevrondown')} />
+          </svg>
+        )}
       </span>
     </NavLink>
   );
@@ -102,7 +109,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                   type="search"
                   className="slds-input"
                   disabled
-                  placeholder={`Search: ${STUB_TEXT}`}
+                  placeholder={`Search... (${STUB_TEXT})`}
                   aria-label={`Global search: ${STUB_TEXT}`}
                   data-testid="global-search-stub"
                 />
@@ -134,7 +141,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             </li>
             {TAB_ORDER.map((object) => (
               <li key={object}>
-                <NavItem to={`/lightning/o/${object}/list`} label={LAYOUTS[object].tabLabel} />
+                <NavItem to={`/lightning/o/${object}/list`} label={LAYOUTS[object].tabLabel} chevron />
               </li>
             ))}
             {STUB_TABS.map((tab) => (

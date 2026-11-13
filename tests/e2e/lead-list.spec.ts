@@ -1,4 +1,4 @@
-import { expect, expectHealthy, test } from './fixtures';
+import { expect, expectHealthy, saveModal, test } from './fixtures';
 
 const ALL_LEADS = [{ field: 'IsConverted', op: 'eq', value: false }];
 const HOT = [...ALL_LEADS, { field: 'Rating', op: 'eq', value: 'Hot' }];
@@ -14,7 +14,7 @@ test('AC2: All Leads, sort by Company, filter Rating = Hot shows 7,111, each act
   expect(expectedHot.total).toBe(7111);
 
   const meta = page.getByTestId('list-meta');
-  const firstRowCompany = page.getByTestId('data-row').first().locator('td').nth(3);
+  const firstRowCompany = page.getByTestId('data-row').first().locator('td[data-field=Company]');
   const timings: Record<string, number> = {};
 
   await page.goto('/lightning/page/home');
@@ -47,11 +47,11 @@ test('AC2: All Leads, sort by Company, filter Rating = Hot shows 7,111, each act
   timings.filterRatingHot = Date.now() - started;
 
   await expect(meta).toHaveText('7,111 items • Sorted by Company • Filtered by Rating');
-  const ratings = await page.getByTestId('data-row').locator('td:nth-child(8)').allTextContents();
+  const ratings = await page.getByTestId('data-row').locator('td[data-field=Rating]').allTextContents();
   expect(ratings.length).toBe(50);
   expect(new Set(ratings)).toEqual(new Set(['Hot']));
 
-  const companies = (await page.getByTestId('data-row').locator('td:nth-child(4)').allTextContents()).map((c) => c.toLowerCase());
+  const companies = (await page.getByTestId('data-row').locator('td[data-field=Company]').allTextContents()).map((c) => c.toLowerCase());
   expect(companies).toEqual([...companies].sort());
 
   started = Date.now();
@@ -76,5 +76,35 @@ test('the list view picker switches to My Leads and marks unsupported views as s
   await menu.getByText('My Leads').click();
   await expect(page.getByTestId('list-view-name')).toHaveText('My Leads');
   await expect(page.getByTestId('list-meta')).toContainText('0 items');
+  expectHealthy(health);
+});
+
+test('Search this list, Save & New and the row Edit action', async ({ page, api, health }) => {
+  await page.goto('/lightning/o/Lead/list');
+  await page.getByTestId('new-record').click();
+  await page.locator('#field-LastName').fill('SaveNew One');
+  await page.locator('#field-Company').fill('Save New Co');
+  await page.getByTestId('save-and-new').click();
+  await expect(page.getByTestId('toast')).toContainText('SaveNew One');
+  await expect(page.locator('#field-LastName')).toHaveValue('');
+  await page.locator('#field-LastName').fill('SaveNew Two');
+  await page.locator('#field-Company').fill('Save New Co');
+  await saveModal(page);
+  await expect(page.getByTestId('record-title')).toHaveText('SaveNew Two');
+
+  await page.goto('/lightning/o/Lead/list');
+  await page.getByTestId('list-search').fill('SaveNew');
+  await expect(page.getByTestId('list-meta')).toContainText('2 items');
+  await expect(page).toHaveURL(/q=SaveNew/);
+  const row = page.getByTestId('data-row').filter({ hasText: 'SaveNew One' });
+  await row.getByTestId('row-actions').click();
+  await page.getByTestId('row-edit').click();
+  await page.locator('#field-Title').fill('Buyer');
+  await saveModal(page);
+  await expect(row.locator('td[data-field=Title]')).toHaveText('Buyer');
+
+  const found = await (await api.post('/api/query', { data: { object: 'Lead', where: [{ field: 'Name', op: 'contains', value: 'SaveNew' }] } })).json();
+  expect(found.records.map((r: { Title: string | null }) => r.Title).sort()).toEqual(['Buyer', null].sort());
+  for (const lead of found.records) expect((await api.delete(`/api/sobjects/Lead/${lead.Id}`)).status()).toBe(204);
   expectHealthy(health);
 });
