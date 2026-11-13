@@ -65,3 +65,6 @@ Each one is recorded with its source in `docs/reference/`.
 | Conversion fails with `STRING_TOO_LONG` if the default opportunity name (the Company) exceeds the 120-character limit | Salesforce's documentation doesn't say it truncates; the caller can pass a shorter opportunityName |
 | The runtime clock starts at `CLOCK` and advances with real time (`offset` mode); tests use `fixed` mode | Records get distinct, realistic timestamps while dates stay anchored to the seed's timeline |
 | Last Activity dates are not updated when tasks are logged | Not needed by the brief's workflow; listed as read-only behaviour |
+| Some documented standard fields are not modelled: Account AccountNumber, Site, TickerSymbol, Ownership; Opportunity ContactId, IsPrivate; Task Type, CallType, CallDurationInSeconds | None is needed by the workflow or the seed; adding one later is a metadata change |
+| Unknown paths with a file extension (such as `/favicon.ico`) return a 404 error array; extensionless paths serve the app shell | Missing assets must fail visibly instead of returning HTML with status 200 |
+| The favicon is a neutral local icon, not the Salesforce logo | Avoids using Salesforce branding assets |

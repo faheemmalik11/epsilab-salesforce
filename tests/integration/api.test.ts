@@ -25,8 +25,9 @@ describe('REST API', () => {
     expect(res.json()).toMatchObject({ status: 'ok', fixture: manifest.fixture });
   });
 
-  it('returns 404 for unknown routes', async () => {
+  it('returns the Salesforce error array for unknown routes', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/nope' });
     expect(res.statusCode).toBe(404);
+    expect(res.json()).toEqual([{ errorCode: 'NOT_FOUND', message: 'The requested resource does not exist' }]);
   });
 });

@@ -11,6 +11,7 @@ cleanup() {
   docker rm -f "$OFFLINE" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
+cleanup
 
 wait_for() {
   for _ in $(seq 1 30); do

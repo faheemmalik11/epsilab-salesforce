@@ -1,12 +1,25 @@
 import { expect, test } from '@playwright/test';
 
-test('GUI renders SLDS, reads SQLite through the API, and makes no external requests', async ({ page, baseURL }) => {
+test('GUI renders SLDS, reads SQLite through the API, and makes only successful same-origin requests', async ({
+  page,
+  baseURL,
+}) => {
   const origin = new URL(baseURL!).origin;
   const external: string[] = [];
+  const failed: string[] = [];
+  const consoleErrors: string[] = [];
   page.on('request', (req) => {
     const url = req.url();
     if (!url.startsWith(origin) && !url.startsWith('data:')) external.push(url);
   });
+  page.on('response', (res) => {
+    if (res.status() >= 400) failed.push(`${res.status()} ${res.url()}`);
+  });
+  page.on('requestfailed', (req) => failed.push(`failed ${req.url()}`));
+  page.on('console', (msg) => {
+    if (msg.type() === 'error') consoleErrors.push(msg.text());
+  });
+  page.on('pageerror', (error) => consoleErrors.push(error.message));
 
   await page.goto('/');
   await expect(page.getByTestId('fixture')).toHaveText('salesforce-seed-v4');
@@ -21,5 +34,8 @@ test('GUI renders SLDS, reads SQLite through the API, and makes no external requ
   );
   expect(spriteResponse.ok()).toBe(true);
 
+  await page.waitForLoadState('networkidle');
   expect(external).toEqual([]);
+  expect(failed).toEqual([]);
+  expect(consoleErrors).toEqual([]);
 });
