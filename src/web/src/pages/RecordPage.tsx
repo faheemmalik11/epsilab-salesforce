@@ -18,6 +18,7 @@ import { ButtonIcon, Icon } from '../components/Icon';
 import { PageError } from '../components/PageError';
 import { Path, type PathStep } from '../components/Path';
 import { RecordForm } from '../components/RecordForm';
+import { Section } from '../components/Section';
 import { useToast } from '../components/Toast';
 import { formatValue } from '../lib/format';
 import { LAYOUTS, layoutFor, recordTitle, type Layout, type RelatedList, type TabObject } from '../lib/layouts';
@@ -227,12 +228,7 @@ function Details({ layout, label, record, fields, editable, singleColumn }: { la
   return (
     <div className={editing ? 'details_editing' : ''} data-testid={editing ? 'details-edit-mode' : undefined}>
       {layout.sections.map((section) => (
-        <div key={section.title} className="slds-section slds-is-open">
-          <h3 className="slds-section__title slds-theme_shade">
-            <ButtonIcon name="chevrondown" />
-            <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
-          </h3>
-          <div className="slds-section__content slds-grid slds-wrap">
+        <Section key={section.title} title={section.title} contentClassName="slds-grid slds-wrap">
             {sectionEntries(section.fields.filter((name) => fields.has(name))).map((entry) => {
               if (typeof entry !== 'string') {
                 const parts = entry.parts.filter((n) => fields.has(n)).map((n) => fields.get(n)!);
@@ -284,8 +280,7 @@ function Details({ layout, label, record, fields, editable, singleColumn }: { la
                 </DetailRow>
               );
             })}
-          </div>
-        </div>
+        </Section>
       ))}
       {editing && (
         <div className="details-footer" data-testid="details-footer">

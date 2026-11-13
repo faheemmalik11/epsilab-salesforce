@@ -38,6 +38,8 @@ interface DataTableProps {
   /** Columns shown with wrapped text instead of clipped; the header menu switches it. */
   wrap?: { wrapped: Set<string>; onChange(field: string, wrap: boolean): void };
   inlineEdit?: InlineEdit;
+  /** Data columns never shrink below this; the table scrolls sideways instead, as Lightning's does. */
+  minColumnWidth?: string;
 }
 
 export function columnLabel(column: Column, fields: Map<string, FieldDescribe>): string {
@@ -131,7 +133,7 @@ function HeaderMenu({ column, label, wrap }: { column: Column; label: string; wr
 }
 
 /** Lightning list view table: sortable headers, column menus, inline edit, row actions and infinite scroll. */
-export function DataTable({ object, columns, fields, records, sort, onSort, onEndReached, numbered, selection, rowActions, wrap, inlineEdit }: DataTableProps) {
+export function DataTable({ object, columns, fields, records, sort, onSort, onEndReached, numbered, selection, rowActions, wrap, inlineEdit, minColumnWidth }: DataTableProps) {
   const sentinel = useRef<HTMLTableRowElement>(null);
   const [editing, setEditing] = useState<{ id: string; field: string } | null>(null);
 
@@ -143,9 +145,12 @@ export function DataTable({ object, columns, fields, records, sort, onSort, onEn
   }, [onEndReached, records.length]);
 
   const extraColumns = (numbered ? 1 : 0) + (selection ? 1 : 0) + (rowActions ? 1 : 0);
+  // Matches the fixed widths of .cell-number, .cell-select and .cell-actions.
+  const extraWidth = (numbered ? 2.5 : 0) + (selection ? 2 : 0) + (rowActions ? 3 : 0);
+  const minWidth = minColumnWidth && `calc(${extraWidth}rem + ${columns.length} * ${minColumnWidth})`;
 
   return (
-    <table className="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout cosmos-table" role="grid" data-testid="data-table">
+    <table className="slds-table slds-table_cell-buffer slds-table_bordered slds-table_fixed-layout cosmos-table" role="grid" data-testid="data-table" style={{ minWidth }}>
       <thead>
         <tr className="slds-line-height_reset">
           {numbered && <th scope="col" className="cell-number" aria-label="Row number" />}

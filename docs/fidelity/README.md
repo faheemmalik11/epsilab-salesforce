@@ -61,6 +61,10 @@ Each row was compared against the real org at the same viewport (1854×927) and 
 | Dialog close button | 32px circle 40px above the header, right-aligned; the same pixel position as the org at 1854px | `modals.spec.ts` (1280, 1440 and 1854px, all dialogs) |
 | Table separators | Dividers only at the right edge of data column headers; none around row number, checkbox or actions | `modals.spec.ts` |
 | Focus and cursor | No outline or ring after a mouse click anywhere; keyboard focus keeps a ring. Everything clickable shows the pointer; disabled controls don't | Manual check |
+| Add Contact Roles | Two steps: a contact list (the opportunity's account first, "Search Contacts..." for all, Show Selected) with Cancel / Next, then Primary Contact (Optional) and a Contact / Role table with Back / Cancel / Save. One API call per role | `contact-roles.spec.ts` |
+| Section bands | Detail and form sections collapse and expand from their title, with one chevron that turns | `record-layout.spec.ts` |
+| Header and navigation | 592px white search pill with a #5c5c5c border; 40px bar, 32px tabs 3px apart, 12px label padding, 24px menu buttons, underline 3px below the tab. Measured in the org at 1854px | `shell.spec.ts` |
+| List meta line | "N items • Sorted by X • Filtered by All leads - Rating • Updated a few seconds ago", as the org words it | `lead-list.spec.ts` |
 | From the first pass | Theme tokens, buttons (hover lift, press, disabled), spinner, modal fade and blur, toast, Path colours, New / Edit modal, Convert dialog | See above |
 
 ## Surface by surface
@@ -92,7 +96,7 @@ Each row was compared against the real org at the same viewport (1854×927) and 
 | "Recent records" in the nav menus are the most recently modified records, not the user's view history | There is no view tracking; changed records are real data |
 | The Leads list header lacks Import, Add to Campaign, Send Email and Add to an Actionable List | Out of scope; leaving them out avoids a row of stubs |
 | Lightning's composer Subject is a combobox of suggested subjects; the task form has Assigned To and Related To pickers | Our composer keeps Subject, Comments or Due Date, and the record it belongs to; the assignee is the acting user |
-| Add Contact Roles adds one contact at a time | Lightning picks several contacts first; the brief needs one role per call |
+| Add Contact Roles is built from the Trailhead images, not measured in the org | The org has no opportunities, so the dialog could not be opened read-only. The toast wording and the disabled Next button with nothing selected are from memory of Lightning |
 | Dialogs close on a backdrop click (with a discard prompt for unsaved changes) | Requested in review; the org ignores backdrop clicks on the Edit dialog |
 | Our org comparison viewport is 1854×927, not 1440×900 | The org window was maximized and Chrome ignored resizing; our app was captured at both sizes |
 | Org-only elements (trial banner, left icon rail, People Score, Consent, AI Summary, Agentforce, Slack, "Ask") are absent | Org-specific or out of scope |

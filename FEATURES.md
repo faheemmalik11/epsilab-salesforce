@@ -36,7 +36,7 @@ What this Salesforce Sales Cloud clone supports, following the brief's tiers. Ou
 | Reports, Dashboards, Forecasts, Campaigns, Cases | Navigation tabs, each opening a page that says the feature is not in scope |
 | Service, Marketing, Commerce, Your Account, Automation | App sidebar items |
 | Global search, App Launcher | Header |
-| Recently Viewed and All Open list views, Pin, List View Controls, Display as Table, Edit List, Show charts | List view header and toolbar |
+| Recently Viewed and All Open list views, List View Controls, Display as Table, Edit List, Show charts | List view header and toolbar |
 | Edit Labels | List row action menu |
 | Email, New Event | Activity composer buttons and the record actions menu |
 | Choose Existing Contact, Choose Existing Opportunity | Convert Lead dialog |

@@ -119,7 +119,7 @@ function ObjectNavItem({ object, onNew }: { object: TabObject; onNew(object: Tab
     {
       header: 'Recent lists',
       items: [
-        { id: 'all', label: `All ${plural}`, testId: `nav-list-all-${object}`, onSelect: () => navigate(listUrl) },
+        { id: 'all', label: `All ${plural}`, testId: `nav-list-all-${object}`, onSelect: () => navigate(`${listUrl}?view=all`) },
         { id: 'mine', label: `My ${plural}`, testId: `nav-list-mine-${object}`, onSelect: () => navigate(`${listUrl}?view=mine`) },
       ],
     },

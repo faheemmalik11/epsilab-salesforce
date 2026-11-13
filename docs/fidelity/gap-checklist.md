@@ -28,7 +28,8 @@ Result: every **Fix** row below is now implemented. Each is covered by `tests/e2
 | Search this list, sort, filters, refresh | Work | Work | **OK** |
 | New button | Opens the New form | Same | **OK** |
 | Import, Add to Campaign, Send Email, Add to an Actionable List | Shown in the org | Not shown | Out of scope, left out to avoid noise (the trial's Starter org also shows them only for Leads) |
-| Pin list view, List View Controls, Display as, Edit List, Charts | Work | Marked stubs | **Stub** (kept) |
+| Pin list view | Works | Marked stub | **Fixed:** pins All or My as the view the tab opens with (`lead-list.spec.ts`) |
+| List View Controls, Display as, Edit List, Charts | Work | Marked stubs | **Stub** (kept) |
 
 ## Lead record page
 
@@ -62,7 +63,7 @@ Result: every **Fix** row below is now implemented. Each is covered by `tests/e2
 | List views, row actions, inline edit, nav menus | As for Leads | As before | **Fix:** the same shared components |
 | Record overflow menu and inline edit | As for Leads | As before | **Fix:** shared |
 | Opportunity stage path and Closed dialog | Mark Stage as Complete; Select Closed Stage opens a dialog | Same | **OK** |
-| Add Contact Roles | Pick contacts, then set the Role and Primary | One contact at a time | **OK** for the brief; noted as a remaining difference |
+| Add Contact Roles | Pick contacts, then set the Role and Primary | One contact at a time | **Fixed:** the same two steps (`contact-roles.spec.ts`) |
 | Tasks split view | Split view | Standard list | Skipped by agreement (see `TRADEOFFS.md`) |
 
 ## Visual corrections found in the same pass

@@ -46,7 +46,7 @@ test('AC2: All Leads, sort by Company, filter Rating = Hot shows 7,111, each act
   await expect(firstRowCompany).toHaveText(expectedHot.company);
   timings.filterRatingHot = Date.now() - started;
 
-  await expect(meta).toHaveText('7,111 items • Sorted by Company • Filtered by Rating');
+  await expect(meta).toHaveText('7,111 items • Sorted by Company • Filtered by All leads - Rating • Updated a few seconds ago');
   const ratings = await page.getByTestId('data-row').locator('td[data-field=Rating]').allTextContents();
   expect(ratings.length).toBe(50);
   expect(new Set(ratings)).toEqual(new Set(['Hot']));
@@ -66,6 +66,27 @@ test('AC2: All Leads, sort by Company, filter Rating = Hot shows 7,111, each act
   expectHealthy(health);
 });
 
+test('opening Filters keeps column widths and scrolls the table sideways', async ({ page, health }) => {
+  await page.goto('/lightning/o/Lead/list?sort=Company');
+  await expect(page.getByTestId('data-row').first()).toBeVisible();
+  const headerWidths = () =>
+    page.locator('th.th-data').evaluateAll((ths) => ths.map((th) => Math.round(th.getBoundingClientRect().width)));
+  const closed = await headerWidths();
+
+  await page.getByTestId('toggle-filters').click();
+  await expect(page.getByTestId('filter-panel')).toBeVisible();
+  const open = await headerWidths();
+  for (const width of open) expect(width).toBeGreaterThanOrEqual(160);
+  expect(open).toEqual(closed);
+
+  const scroll = page.getByTestId('list-scroll');
+  const overflows = await scroll.evaluate((el) => el.scrollWidth > el.clientWidth);
+  expect(overflows).toBe(true);
+  await expect(page.getByTestId('filter-panel')).toBeInViewport();
+
+  expectHealthy(health);
+});
+
 test('the list view picker switches to My Leads and marks unsupported views as stubs', async ({ page, health }) => {
   await page.goto('/lightning/o/Lead/list');
   await expect(page.getByTestId('list-meta')).toContainText('21,628 items');
@@ -76,6 +97,31 @@ test('the list view picker switches to My Leads and marks unsupported views as s
   await menu.getByText('My Leads').click();
   await expect(page.getByTestId('list-view-name')).toHaveText('My Leads');
   await expect(page.getByTestId('list-meta')).toContainText('0 items');
+  expectHealthy(health);
+});
+
+test('pinning a list view makes it the view the tab opens with', async ({ page, health }) => {
+  await page.goto('/lightning/o/Lead/list');
+  const pin = page.getByTestId('list-view-pin');
+  await expect(page.getByTestId('list-view-name')).toHaveText('All Leads');
+  await expect(pin).toHaveAttribute('title', 'This list is pinned.');
+
+  await page.goto('/lightning/o/Lead/list?view=mine');
+  await expect(page.getByTestId('list-view-name')).toHaveText('My Leads');
+  await expect(pin).toHaveAttribute('title', 'Pin this list view.');
+  await pin.click();
+  await expect(pin).toHaveAttribute('title', 'This list is pinned.');
+  await expect(page.getByTestId('toast')).toContainText('My Leads was pinned.');
+
+  // The bare tab URL, as the navigation bar opens it, now shows the pinned view; other objects are unaffected.
+  await page.goto('/lightning/o/Lead/list');
+  await expect(page.getByTestId('list-view-name')).toHaveText('My Leads');
+  await page.goto('/lightning/o/Lead/list?view=all');
+  await expect(page.getByTestId('list-view-name')).toHaveText('All Leads');
+  await expect(pin).toHaveAttribute('title', 'Pin this list view.');
+  await page.goto('/lightning/o/Account/list');
+  await expect(page.getByTestId('list-view-name')).toHaveText('All Accounts');
+
   expectHealthy(health);
 });
 

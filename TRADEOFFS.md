@@ -58,7 +58,7 @@ Each stub stays visible, is disabled, and is marked "Not in scope" (a small labe
 | New Event and Email buttons in the activity composer | Events and real email are out of scope in the brief |
 | Seller Home cards My Goals, Today's Events and Salesblazer, and Recent Records "View All" | Goals, events, community content and view history are out of scope |
 | Edit Labels in the list row menu, and New Event in the record overflow menu | Labels and events are out of scope |
-| List view toolbar buttons List View Controls, Display as Table, Edit List and Show charts, and Pin this list view | List view administration and charts are out of scope; Refresh and Filters are live |
+| List view toolbar buttons List View Controls, Display as Table, Edit List and Show charts | List view administration and charts are out of scope; Refresh and Filters are live |
 | "Choose Existing Contact" and "Choose Existing Opportunity" in the Convert dialog | The brief's conversion creates a contact and an optional new opportunity |
 
 ## Skipped
@@ -92,6 +92,7 @@ Each one is recorded with its source in `docs/reference/`.
 | Missing required fields fail with `REQUIRED_FIELD_MISSING` and the message `Required fields are missing: [Field, ...]` | The code and error shape are documented; the exact message wording isn't |
 | A converted opportunity uses the default stage (Prospecting), with CloseDate at the end of the current fiscal quarter | The close date is documented; the stage follows the documented picklist-default rule |
 | The contact role created during conversion is not primary and has no Role | Salesforce links the contact; nothing documents it as primary |
+| Pinning a list view (All or My) is remembered per object in the browser, like the acting user, not on the server | Pinning is a personal display preference; the brief defines no user settings to store |
 | Add Contact Roles follows Lightning's two steps (pick contacts, then roles and the primary contact) and saves one API call per role. Next stays disabled until a contact is selected, and the toast reads "Contact role was created." or "N contact roles were created." | The layout comes from the Trailhead images; the org has no opportunities to check the wording and the empty-selection behaviour against |
 | Lead tasks stay on the lead after conversion | Salesforce docs describe re-parenting only as a client-side best practice |
 | Generated tasks reference seed leads (calls and follow-ups on 1,800 leads), changing PLAN.md's earlier "no tasks on seed leads" | Requested for Phase 7. A task never writes to the lead row, so every seed lead stays exactly as imported |

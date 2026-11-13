@@ -9,6 +9,7 @@ import { FieldInput, type FormValue } from './FieldInput';
 import { initialValue, toApiValue } from '../lib/formValues';
 import { Modal } from './Modal';
 import { PageError } from './PageError';
+import { Section } from './Section';
 import { useToast } from './Toast';
 
 const SYSTEM_FIELDS = new Set(['CreatedById', 'CreatedDate', 'LastModifiedById', 'LastModifiedDate']);
@@ -155,11 +156,7 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
       {layout.sections
         .filter((section) => section.fields.some((name) => visible(fieldMap.get(name))))
         .map((section) => (
-          <div key={section.title} className="slds-section slds-is-open">
-            <h3 className="slds-section__title slds-theme_shade">
-              <span className="slds-truncate slds-p-horizontal_small">{section.title}</span>
-            </h3>
-            <div className="slds-section__content slds-grid slds-wrap slds-gutters_small">
+          <Section key={section.title} title={section.title} contentClassName="slds-grid slds-wrap slds-gutters_small">
               {groupNameParts(section.fields.map((name) => fieldMap.get(name)).filter(visible)).map((item) =>
                 Array.isArray(item) ? (
                   <div key="Name" className="slds-col slds-size_1-of-2">
@@ -179,8 +176,7 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
                   </div>
                 ),
               )}
-            </div>
-          </div>
+          </Section>
         ))}
     </Modal>
   );

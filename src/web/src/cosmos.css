@@ -39,49 +39,74 @@ a {
 }
 
 /* Global header */
+/* Measured in the org: 8px above and below, 16px at the sides, and a 592px search pill. */
 .slds-global-header {
   height: 3.125rem;
-  padding: 0.5rem 1rem;
+  padding: 0.5rem 0;
+}
+
+.slds-global-header__item {
+  padding: 0 1rem;
 }
 
 .slds-global-header__item_search {
   flex: 0 1 37rem;
+  padding: 0;
 }
 
-.slds-global-header__item_search .slds-input {
+.slds-global-header__item_search .slds-input,
+.slds-global-header__item_search .slds-input[disabled] {
   height: 2rem;
+  padding-left: 2.375rem;
   border-radius: var(--cosmos-radius-pill);
-  border-color: var(--cosmos-border);
+  border-color: var(--cosmos-border-strong);
   background: var(--cosmos-surface);
 }
 
-.slds-global-header__item_search .slds-input[disabled] {
-  background: var(--cosmos-shade);
+.slds-global-header__item_search .slds-input::placeholder {
+  color: var(--cosmos-text-weak);
+}
+
+.slds-global-header__item_search .slds-input__icon {
+  left: 1rem;
+  margin-top: -0.4375rem;
+  line-height: 0;
+}
+
+.slds-global-header__item_search .slds-input__icon .slds-icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  fill: var(--cosmos-text-weak);
 }
 
 /* Sales navigation bar */
+/* Measured in the org: 4px above and below 32px items, 3px apart, each label padded 12px. */
 .slds-context-bar {
   height: 2.5rem;
-  padding: 0.25rem 0 0 0.75rem;
+  padding: 0.25rem 0;
   border-bottom: 0;
-  box-shadow: 0 2px 2px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.07);
   color: var(--cosmos-text);
+}
+
+.slds-context-bar__primary {
+  padding-left: 1rem;
 }
 
 .slds-context-bar__app-name {
   font-size: 1.25rem;
   font-weight: 400;
-  padding-right: 1rem;
+  padding: 0 1.5rem 0 0;
 }
 
 .slds-context-bar__secondary .slds-context-bar__item {
   height: 2rem;
-  margin: 0 0.125rem;
+  margin: 0 0.1875rem 0 0;
   font-weight: 500;
 }
 
 .slds-context-bar__secondary .slds-context-bar__label-action {
-  padding: 0 0.5rem;
+  padding: 0 0.75rem;
   color: var(--cosmos-text);
 }
 
@@ -102,7 +127,7 @@ a {
   position: absolute;
   left: 0;
   right: 0;
-  bottom: -0.25rem;
+  bottom: -3px;
   height: 3px;
   border-radius: 0.75rem;
   background: #001e5b;
@@ -113,7 +138,7 @@ a {
 .slds-context-bar__secondary .slds-context-bar__item:not(.slds-no-hover):hover:after {
   display: block;
   opacity: 1;
-  bottom: -0.25rem;
+  bottom: -3px;
   background: #001e5b;
   mix-blend-mode: normal;
 }
@@ -365,9 +390,35 @@ a {
 }
 
 .slds-section__title-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
   width: 100%;
+  padding: 0 0.5rem;
+  border: 0;
   font-size: 1.25rem;
   font-weight: 400;
+  line-height: 1.25;
+  text-align: left;
+}
+
+.slds-section__title-action:hover,
+.slds-section__title-action:focus {
+  background: var(--cosmos-shade);
+  color: var(--cosmos-text);
+}
+
+.slds-section__title-action .slds-button__icon {
+  flex: none;
+  width: 0.875rem;
+  height: 0.875rem;
+  fill: var(--cosmos-text);
+  transition: transform 100ms ease-in-out;
+}
+
+/* One chevron, turned to point right while the section is closed, as Lightning does. */
+.slds-section__title-action[aria-expanded='false'] .slds-button__icon {
+  transform: rotate(-90deg);
 }
 
 /* Tabs */
@@ -846,4 +897,8 @@ input:disabled + label,
 input:disabled + .slds-checkbox__label,
 input:disabled + .slds-radio__label {
   cursor: default;
+}
+
+.slds-section__content[hidden] {
+  display: none;
 }

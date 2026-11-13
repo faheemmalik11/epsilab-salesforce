@@ -131,3 +131,39 @@ test('account, contact and opportunity pages show details, activity and related 
   await expect(page.getByTestId('related-Contact')).toBeVisible();
   expectHealthy(health);
 });
+
+test('detail and form sections collapse and expand on Lead, Contact, Account and Opportunity', async ({ page, api, health }) => {
+  const accountId = await restCreate(api, 'Account', { Name: 'Collapse Co' });
+  const ids = {
+    Lead: await restCreate(api, 'Lead', { LastName: 'Collapse', Company: 'Collapse Co' }),
+    Account: accountId,
+    Contact: await restCreate(api, 'Contact', { LastName: 'Collapse', AccountId: accountId }),
+    Opportunity: await restCreate(api, 'Opportunity', { Name: 'Collapse deal', AccountId: accountId, StageName: 'Prospecting', CloseDate: '2028-12-31' }),
+  };
+  for (const [object, id] of Object.entries(ids)) {
+    // Wait for the icon sprite, so the next navigation doesn't abort its request.
+    await page.goto(`/lightning/r/${object}/${id}/view`, { waitUntil: 'networkidle' });
+    const sections = page.getByTestId('record-details').getByTestId('section');
+    await expect(sections.first()).toBeVisible();
+    for (let i = 0; i < (await sections.count()); i++) {
+      const toggle = sections.nth(i).locator('.slds-section__title-action');
+      const content = sections.nth(i).locator('.slds-section__content');
+      await expect(toggle, `${object} section ${i}`).toHaveAttribute('aria-expanded', 'true');
+      await expect(content).toBeVisible();
+      await toggle.click();
+      await expect(toggle).toHaveAttribute('aria-expanded', 'false');
+      await expect(content).toBeHidden();
+      await toggle.click();
+      await expect(content).toBeVisible();
+    }
+  }
+
+  await page.getByTestId('edit-record').click();
+  const formSection = page.getByRole('dialog').getByTestId('section').first();
+  await formSection.locator('.slds-section__title-action').click();
+  await expect(formSection.locator('.slds-section__content')).toBeHidden();
+  await formSection.locator('.slds-section__title-action').click();
+  await expect(formSection.locator('.slds-section__content')).toBeVisible();
+
+  expectHealthy(health);
+});

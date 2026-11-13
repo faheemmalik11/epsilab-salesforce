@@ -15,7 +15,8 @@ import { PageError } from '../components/PageError';
 import { RecordForm } from '../components/RecordForm';
 import { scopeTitle } from '../components/Stub';
 import { useActingUser } from '../context/ActingUser';
-import { formatNumber } from '../lib/format';
+import { formatNumber, formatRelativeTime } from '../lib/format';
+import { getPinnedView, setPinnedView, type ListView } from '../lib/pinnedView';
 import { LAYOUTS, recordTitle, type TabObject } from '../lib/layouts';
 import { recordUrl } from '../components/FieldOutput';
 import { Spinner } from '../components/Spinner';
@@ -180,7 +181,11 @@ export function ListPage({ object }: { object: TabObject }) {
   const search = params.get('q') ?? '';
   const [searchDraft, setSearchDraft] = useState(search);
 
-  const view = params.get('view') === 'mine' ? 'mine' : 'all';
+  // The pinned view is what the tab opens with; the URL only names a view that differs from it.
+  const [pinned, setPinned] = useState<Record<string, ListView>>({});
+  const pinnedView = pinned[object] ?? getPinnedView(object);
+  const viewParam = params.get('view');
+  const view: ListView = viewParam === 'mine' || viewParam === 'all' ? viewParam : pinnedView;
   const sort: Sort = { field: params.get('sort') ?? layout.defaultSort, direction: params.get('dir') === 'desc' ? 'desc' : 'asc' };
   const filters = parseFilters(params);
   const searchField = layout.columns.find((c) => c.link && !c.relationship)?.field ?? 'Name';
@@ -202,6 +207,7 @@ export function ListPage({ object }: { object: TabObject }) {
     getNextPageParam: (last, pages) => (last.done ? undefined : pages.length * PAGE_SIZE),
   });
 
+  const now = useNow(30_000);
   const records = list.data?.pages.flatMap((p) => p.records) ?? [];
   const total = list.data?.pages[0]?.totalSize;
   const { hasNextPage, isFetchingNextPage, fetchNextPage } = list;
@@ -334,7 +340,7 @@ export function ListPage({ object }: { object: TabObject }) {
                             id: v,
                             label: `${v === 'mine' ? 'My' : 'All'} ${plural}`,
                             checked: view === v,
-                            onSelect: () => update({ view: v === 'all' ? null : v }),
+                            onSelect: () => update({ view: v === pinnedView ? null : v }),
                           })),
                           ...STUB_VIEWS.map((name) => ({ id: name, label: name === 'All Open' ? `All Open ${plural}` : name, stub: true })),
                         ].filter((item) => item.label.toLowerCase().includes(viewSearch.trim().toLowerCase())),
@@ -356,11 +362,18 @@ export function ListPage({ object }: { object: TabObject }) {
                   <button
                     type="button"
                     className="slds-button slds-button_icon slds-button_icon-border list-header__pin"
-                    disabled
-                    title={scopeTitle('Pinning a list view')}
+                    aria-pressed={view === pinnedView}
+                    title={view === pinnedView ? 'This list is pinned.' : 'Pin this list view.'}
+                    data-testid="list-view-pin"
+                    onClick={() => {
+                      if (view === pinnedView) return;
+                      setPinnedView(object, view);
+                      setPinned({ ...pinned, [object]: view });
+                      toast(`${viewLabel} was pinned.`);
+                    }}
                   >
-                    <ButtonIcon name="pin" />
-                    <span className="slds-assistive-text">{scopeTitle('Pinning a list view')}</span>
+                    <ButtonIcon name={view === pinnedView ? 'pinned' : 'pin'} />
+                    <span className="slds-assistive-text">{view === pinnedView ? 'This list is pinned.' : 'Pin this list view.'}</span>
                   </button>
                 </div>
               </div>
@@ -377,9 +390,10 @@ export function ListPage({ object }: { object: TabObject }) {
             <p className="list-header__meta" data-testid="list-meta">
               {total === undefined ? 'Loading…' : `${formatNumber(total)} item${total === 1 ? '' : 's'}`}
               {sortLabel && ` • Sorted by ${sortLabel}`}
-              {filterLabels.length > 0 && ` • Filtered by ${filterLabels.join(', ')}`}
+              {` • Filtered by ${view === 'mine' ? 'My' : 'All'} ${plural.toLowerCase()}${filterLabels.length > 0 ? ` - ${filterLabels.join(', ')}` : ''}`}
               {search && ` • Search: "${search}"`}
               {selected.size > 0 && ` • ${selected.size} selected`}
+              {list.dataUpdatedAt > 0 && ` • Updated ${formatRelativeTime(list.dataUpdatedAt, now)}`}
             </p>
             <div className="list-toolbar">
               <div className="slds-form-element list-toolbar__search">
@@ -439,13 +453,14 @@ export function ListPage({ object }: { object: TabObject }) {
       <PageError error={list.error} />
 
       <div className="slds-grid list-body">
-        <div className="slds-col slds-scrollable_y list-scroll" data-testid="list-scroll">
+        <div className="slds-col slds-scrollable list-scroll" data-testid="list-scroll">
           <DataTable
             object={object}
             columns={layout.columns}
             fields={fields}
             records={records}
             numbered
+            minColumnWidth="10rem"
             selection={{ selected, onChange: setSelected }}
             rowActions={(record) => [
               { id: 'edit', label: 'Edit', testId: 'row-edit', onSelect: () => setEditing(record) },
@@ -516,4 +531,14 @@ export function ListPage({ object }: { object: TabObject }) {
       {changingOwner && <ChangeOwnerModal record={changingOwner} onClose={() => setChangingOwner(null)} />}
     </div>
   );
+}
+
+/** The current time, re-read every `intervalMs` so relative timestamps stay current. */
+function useNow(intervalMs: number): number {
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), intervalMs);
+    return () => clearInterval(timer);
+  }, [intervalMs]);
+  return now;
 }

@@ -14,6 +14,16 @@ export function formatNumber(value: number): string {
   return number.format(value);
 }
 
+/** Lightning's list view wording for how long ago data was fetched, e.g. "a few seconds ago". */
+export function formatRelativeTime(then: number, now: number): string {
+  const minutes = Math.floor(Math.max(0, now - then) / 60_000);
+  if (minutes < 1) return 'a few seconds ago';
+  if (minutes === 1) return 'a minute ago';
+  if (minutes < 60) return `${minutes} minutes ago`;
+  const hours = Math.floor(minutes / 60);
+  return hours === 1 ? 'an hour ago' : `${hours} hours ago`;
+}
+
 /** Formats a field value for display, following its describe type. */
 export function formatValue(type: string, value: unknown): string {
   if (value === null || value === undefined || value === '') return '';

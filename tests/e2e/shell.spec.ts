@@ -116,3 +116,30 @@ for (const width of [1280, 1440, 1920]) {
     expectHealthy(health);
   });
 }
+
+test('the header and navigation bar keep the measurements taken in the org', async ({ page, health }) => {
+  await page.setViewportSize({ width: 1854, height: 927 });
+  await page.goto('/lightning/o/Lead/list');
+  const box = async (selector: string) => (await page.locator(selector).first().boundingBox())!;
+
+  const search = page.getByTestId('global-search-stub');
+  expect((await search.boundingBox())!.width).toBe(592);
+  expect((await search.boundingBox())!.height).toBe(32);
+  await expect(search).toHaveCSS('background-color', 'rgb(255, 255, 255)');
+  await expect(search).toHaveCSS('border-top-color', 'rgb(92, 92, 92)');
+
+  // The bar is 40px with 32px items; a tab's label is padded 12px and its 24px menu button sits 12px from the edge.
+  expect((await box('.slds-context-bar')).height).toBe(40);
+  const item = await box('[data-testid=nav-Lead]');
+  const label = await box('[data-testid=nav-Lead] a span');
+  const menu = await box('[data-testid=nav-chevron-Lead]');
+  expect(item.height).toBe(32);
+  expect(Math.round(label.x - item.x)).toBe(12);
+  expect(Math.round(menu.x - (label.x + label.width))).toBe(12);
+  expect(Math.round(item.x + item.width - (menu.x + menu.width))).toBe(12);
+  expect(menu.width).toBe(24);
+  const next = await box('[data-testid=nav-Account]');
+  expect(Math.round(next.x - (item.x + item.width))).toBe(3);
+
+  expectHealthy(health);
+});

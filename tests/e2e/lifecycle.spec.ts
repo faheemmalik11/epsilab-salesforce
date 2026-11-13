@@ -75,9 +75,11 @@ test('L1-L5: a lead is created, worked, converted, progressed and Closed Won in 
   await expect(page.getByTestId('related-OpportunityContactRole')).toContainText('Contact Roles (1)');
   await restCreate(api, 'Contact', { LastName: 'Backus', AccountId: lead.ConvertedAccountId });
   await page.getByTestId('related-new-OpportunityContactRole').click();
-  await pickLookup(page, 'field-ContactId', 'Backus');
-  await page.locator('#field-Role').selectOption('Economic Buyer');
-  await checkByLabel(page.getByRole('dialog'), 'Primary');
+  await checkByLabel(page.getByTestId('contact-roles-row').filter({ hasText: 'Backus' }), 'Select Backus');
+  await page.getByTestId('contact-roles-next').click();
+  await page.getByTestId('contact-role-role').selectOption('Economic Buyer');
+  await page.locator('#contact-role-primary').click();
+  await page.getByRole('option', { name: 'Backus' }).click();
   await saveModal(page);
   await expect(page.getByTestId('related-OpportunityContactRole')).toContainText('Contact Roles (2)');
   await expect(page.getByTestId('related-OpportunityContactRole')).toContainText('Economic Buyer');
