@@ -92,6 +92,7 @@ Each one is recorded with its source in `docs/reference/`.
 | Missing required fields fail with `REQUIRED_FIELD_MISSING` and the message `Required fields are missing: [Field, ...]` | The code and error shape are documented; the exact message wording isn't |
 | A converted opportunity uses the default stage (Prospecting), with CloseDate at the end of the current fiscal quarter | The close date is documented; the stage follows the documented picklist-default rule |
 | The contact role created during conversion is not primary and has no Role | Salesforce links the contact; nothing documents it as primary |
+| Add Contact Roles follows Lightning's two steps (pick contacts, then roles and the primary contact) and saves one API call per role. Next stays disabled until a contact is selected, and the toast reads "Contact role was created." or "N contact roles were created." | The layout comes from the Trailhead images; the org has no opportunities to check the wording and the empty-selection behaviour against |
 | Lead tasks stay on the lead after conversion | Salesforce docs describe re-parenting only as a client-side best practice |
 | Generated tasks reference seed leads (calls and follow-ups on 1,800 leads), changing PLAN.md's earlier "no tasks on seed leads" | Requested for Phase 7. A task never writes to the lead row, so every seed lead stays exactly as imported |
 | `LastActivityDate` is not maintained from tasks on any object | It is stored, not derived from tasks, so seed leads keep their imported value (blank in this seed). Computing it would rewrite seed rows; recorded as a known gap |
@@ -143,6 +144,7 @@ Each one is recorded with its source in `docs/reference/`.
 | Users are read-only as an object: create, edit and delete return `INSUFFICIENT_ACCESS_OR_READONLY` | Users are seeded only; the brief puts user management out of scope |
 | Malformed JSON bodies return `JSON_PARSER_ERROR` | That's the REST-specific code Salesforce uses; it isn't in the SOAP StatusCode list we could read, so this is from memory |
 | Bad query paging returns `MALFORMED_QUERY`; an unknown operator returns `INVALID_QUERY_FILTER_OPERATOR` | Documented Salesforce codes |
+| Malformed filters and sorts return `MALFORMED_QUERY` from the shared query service: a sort direction other than asc or desc (any case), `in` without an array, and `eq`, `ne`, `in` or `contains` without a `value`. `eq null` / `ne null` follow SOQL (empty / not empty) | Silent wrong answers are worse than errors for an agent-facing API. The MCP schema passes `direction` as a string so the service validates it and both surfaces return the same error array |
 | Generated data is anchored to the image-build clock; at runtime `CLOCK` and `CLOCK_MODE` drive the app clock, which can also be changed through the admin API | Baselines must be identical on every start for byte-identical reset |
 | Reset restores data, not configuration: the clock and `SEED_PROFILE` stay as set | They are environment settings, not part of the database |
 | `small` profile generates 2 accounts, `default` 5 (Phase 7 grows `default`) | Two profiles prove the setting works; both import the full seed |

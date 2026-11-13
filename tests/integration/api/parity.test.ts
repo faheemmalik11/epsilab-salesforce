@@ -41,6 +41,36 @@ describe('same errors from REST and MCP (AC5)', () => {
     expect(Buffer.from(viaStage.data[0].message).toString('hex')).toBe(Buffer.from('Amount is required for stages after Qualification.').toString('hex'));
   });
 
+  it('malformed queries: a bad sort direction, "in" without an array, and a missing value', async () => {
+    const cases = [
+      [{ object: 'Lead', orderBy: [{ field: 'Company', direction: 'sideways' }], limit: 1 }, 'Sort direction must be "asc" or "desc", got "sideways"', ['Company']],
+      [{ object: 'Lead', where: [{ field: 'Rating', op: 'in', value: 'Hot' }], limit: 1 }, "Operator 'in' on Rating needs an array of values", ['Rating']],
+      [{ object: 'Lead', where: [{ field: 'Rating', op: 'eq' }], limit: 1 }, "Operator 'eq' on Rating needs a value", ['Rating']],
+      [{ object: 'Lead', where: [{ field: 'Company', op: 'contains' }], limit: 1 }, "Operator 'contains' on Company needs a value", ['Company']],
+    ] as const;
+    for (const [query, message, fields] of cases) {
+      const rest = await h.rest('POST', '/api/query', query);
+      const mcp = await tool('query_records', query);
+      expect(rest.status, message).toBe(400);
+      expect(rest.body).toEqual([{ errorCode: 'MALFORMED_QUERY', message, fields }]);
+      expect(mcp.isError).toBe(true);
+      expect(mcp.data).toEqual(rest.body);
+    }
+  });
+
+  it('sort directions in any case, and SOQL null comparisons, give the same answers on both surfaces', async () => {
+    const page = async (direction: string) => (await h.rest('POST', '/api/query', { object: 'Account', orderBy: [{ field: 'Name', direction }], limit: 3 })).body.records.map((r: { Id: string }) => r.Id);
+    expect(await page('DESC')).toEqual(await page('desc'));
+    expect(await page('Asc')).toEqual(await page('asc'));
+    expect(await page('desc')).not.toEqual(await page('asc'));
+    const total = async (where: unknown[]) => (await h.rest('POST', '/api/query', { object: 'Lead', where, limit: 1 })).body.totalSize as number;
+    expect(await total([{ field: 'Rating', op: 'eq', value: null }])).toBe(await total([{ field: 'Rating', op: 'isNull' }]));
+    expect(await total([{ field: 'Rating', op: 'ne', value: null }])).toBe(await total([{ field: 'Rating', op: 'notNull' }]));
+    expect(await total([{ field: 'Rating', op: 'eq', value: null }])).toBeGreaterThan(0);
+    const viaMcp = await tool('query_records', { object: 'Account', orderBy: [{ field: 'Name', direction: 'DESC' }], limit: 3 });
+    expect(viaMcp.data.records.map((r: { Id: string }) => r.Id)).toEqual(await page('desc'));
+  });
+
   it('invalid reference and restricted picklist', async () => {
     const input = { LastName: 'X', Company: 'Y', Status: 'Not a status', OwnerId: '005SB0000000999AAA' };
     const rest = await h.rest('POST', '/api/sobjects/Lead', input);

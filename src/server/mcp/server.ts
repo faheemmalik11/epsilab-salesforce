@@ -147,7 +147,10 @@ export function createMcpServer(runtime: Runtime): McpServer {
             }),
           )
           .optional(),
-        orderBy: z.array(z.object({ field: z.string(), direction: z.enum(['asc', 'desc']).optional() })).optional(),
+        // A plain string, so a bad direction reaches the service and gets the same MALFORMED_QUERY as REST.
+        orderBy: z
+          .array(z.object({ field: z.string(), direction: z.string().describe('"asc" or "desc"').optional() }))
+          .optional(),
         limit: z.number().int().optional().describe('1 to 2000, default 50'),
         offset: z.number().int().optional(),
         actingUserId,

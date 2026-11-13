@@ -14,7 +14,8 @@ export interface Condition {
 
 export interface SortSpec {
   field: string;
-  direction?: 'asc' | 'desc';
+  /** "asc" or "desc", in any case; validated by queryRecords. */
+  direction?: string;
 }
 
 export interface QueryOptions {
@@ -52,7 +53,14 @@ function storedValue(field: FieldDef, raw: unknown, errors: ApiError[]): string 
 /** Field types whose equality filters ignore case, as SOQL's do. IDs and references stay exact. */
 const CASE_INSENSITIVE_TYPES = new Set(['string', 'picklist', 'email', 'phone', 'url', 'textarea']);
 
+/** Operators that compare against `value`, so a request without one is malformed rather than "no rows". */
+const NEEDS_VALUE = new Set(['eq', 'ne', 'in', 'contains']);
+
 function conditionSql(field: FieldDef, condition: Condition, params: unknown[], errors: ApiError[]): string {
+  if (NEEDS_VALUE.has(condition.op) && condition.value === undefined) {
+    errors.push(apiError('MALFORMED_QUERY', `Operator '${condition.op}' on ${field.name} needs a value`, [field.name]));
+    return '1';
+  }
   const column = `"${field.name}"`;
   // SQLite's NOCASE folds ASCII letters only; every seed and picklist value is ASCII.
   const collate = CASE_INSENSITIVE_TYPES.has(field.type) ? ' COLLATE NOCASE' : '';
@@ -62,13 +70,20 @@ function conditionSql(field: FieldDef, condition: Condition, params: unknown[], 
     case 'notNull':
       return `${column} IS NOT NULL`;
     case 'eq':
+      // As in SOQL, "= null" matches empty values.
+      if (condition.value === null) return `${column} IS NULL`;
       params.push(storedValue(field, condition.value, errors));
       return `${column} = ?${collate}`;
     case 'ne':
+      if (condition.value === null) return `${column} IS NOT NULL`;
       params.push(storedValue(field, condition.value, errors));
       return `(${column} IS NULL OR ${column} <> ?${collate})`;
     case 'in': {
-      const list = Array.isArray(condition.value) ? condition.value : [];
+      if (!Array.isArray(condition.value)) {
+        errors.push(apiError('MALFORMED_QUERY', `Operator 'in' on ${field.name} needs an array of values`, [field.name]));
+        return '1';
+      }
+      const list = condition.value;
       if (list.length === 0) return '0';
       list.forEach((v) => params.push(storedValue(field, v, errors)));
       return `${column}${collate} IN (${list.map(() => '?').join(', ')})`;
@@ -102,6 +117,15 @@ export function queryRecords(ctx: ServiceContext, options: QueryOptions): QueryR
     return conditionSql(field, condition, params, errors);
   });
 
+  // Sort directions are "asc" or "desc" in any case, as in SOQL; anything else is malformed, not ascending.
+  const directionOf = (sort: SortSpec): 'ASC' | 'DESC' => {
+    const direction = sort.direction === undefined ? 'asc' : String(sort.direction).toLowerCase();
+    if (direction !== 'asc' && direction !== 'desc') {
+      errors.push(apiError('MALFORMED_QUERY', `Sort direction must be "asc" or "desc", got "${String(sort.direction)}"`, [sort.field]));
+    }
+    return direction === 'desc' ? 'DESC' : 'ASC';
+  };
+
   const sorts = (options.orderBy ?? []).map((sort) => {
     const field = fieldOf(sort.field);
     if (!field) {
@@ -109,7 +133,7 @@ export function queryRecords(ctx: ServiceContext, options: QueryOptions): QueryR
       return '';
     }
     const collate = TEXT_TYPES.has(field.type) ? ' COLLATE NOCASE' : '';
-    return `"${field.name}"${collate} ${sort.direction === 'desc' ? 'DESC' : 'ASC'}`;
+    return `"${field.name}"${collate} ${directionOf(sort)}`;
   });
 
   const limit = options.limit ?? DEFAULT_LIMIT;
@@ -123,7 +147,8 @@ export function queryRecords(ctx: ServiceContext, options: QueryOptions): QueryR
   if (errors.length > 0) throw new ServiceError(errors);
 
   const where = clauses.length > 0 ? `WHERE ${clauses.join(' AND ')}` : '';
-  const lastDirection = options.orderBy?.at(-1)?.direction === 'desc' ? 'DESC' : 'ASC';
+  const lastSort = options.orderBy?.at(-1);
+  const lastDirection = lastSort && String(lastSort.direction ?? 'asc').toLowerCase() === 'desc' ? 'DESC' : 'ASC';
   const orderBy = `ORDER BY ${[...sorts, `"Id" ${lastDirection}`].join(', ')}`;
 
   const { total } = statement(ctx.db, `SELECT COUNT(*) AS total FROM "${object.name}" ${where}`).get(...params) as {

@@ -51,7 +51,7 @@ Shaped like the Salesforce REST API. Errors are always the Salesforce array `[{ 
 | `POST /api/tasks/log-call` | `{ whoId?, whatId?, subject?, description?, activityDate? }` |
 | `GET /api/users`, `GET /api/mutations` | Seeded users; the mutation log since the last build |
 
-Query operators: `eq`, `ne`, `in`, `isNull`, `notNull`, `contains`. The All Leads view is `IsConverted eq false`.
+Query operators: `eq`, `ne`, `in`, `isNull`, `notNull`, `contains`. `eq`, `ne` and `in` ignore case on text and picklist fields; `eq null` and `ne null` mean empty and not empty, as in SOQL. `in` takes an array, the value-comparing operators require a `value`, and `direction` is `asc` or `desc` in any case; anything else returns `MALFORMED_QUERY`, the same over REST and MCP. The All Leads view is `IsConverted eq false`.
 
 ## Data
 
