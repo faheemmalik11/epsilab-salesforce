@@ -3,7 +3,9 @@ import { z } from 'zod';
 import { OBJECTS, type ObjectName } from '../metadata/index.js';
 import { OPPORTUNITY_STAGE } from '../metadata/picklists.js';
 import { createdResult, describeObject, listObjects, presentRecord, presentRecords } from '../presenters.js';
-import { contextFor, type RuntimeDeps } from '../requestContext.js';
+import { describeClock, setClock, type Runtime } from '../environment/runtime.js';
+import { createSnapshot, listSnapshots, resetToSnapshot, verifySnapshot } from '../environment/snapshots.js';
+import { contextFor } from '../requestContext.js';
 import {
   convertLead,
   createRecord,
@@ -18,8 +20,6 @@ import {
   updateRecord,
 } from '../services/index.js';
 import type { ServiceContext } from '../services/context.js';
-
-export type McpDeps = RuntimeDeps;
 
 const objectName = z.enum(OBJECTS.map((o) => o.name) as [ObjectName, ...ObjectName[]]).describe('Salesforce object API name');
 const recordId = z.string().describe('15 or 18-character Salesforce record ID');
@@ -47,16 +47,16 @@ function failure(error: ServiceError) {
 }
 
 /** Runs a tool body with a service context for the acting user, mapping service errors to tool errors. */
-async function run(deps: McpDeps, userId: string | undefined, body: (ctx: ServiceContext) => object) {
+async function run(runtime: Runtime, userId: string | undefined, body: (ctx: ServiceContext) => object) {
   try {
-    return success(body(contextFor(deps, userId)));
+    return success(body(contextFor(runtime, userId)));
   } catch (error) {
     if (error instanceof ServiceError) return failure(error);
     throw error;
   }
 }
 
-export function createMcpServer(deps: McpDeps): McpServer {
+export function createMcpServer(runtime: Runtime): McpServer {
   const server = new McpServer({ name: 'epsilab-salesforce', version: '0.1.0' });
 
   server.registerTool(
@@ -66,7 +66,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       description: 'Reports the seed fixture loaded into the database and the SQLite version.',
       inputSchema: z.object({}),
     },
-    async () => success(getHealth(deps.db)),
+    async () => success(getHealth(runtime.store.db)),
   );
 
   server.registerTool(
@@ -87,7 +87,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
   server.registerTool(
     'list_users',
     { description: 'Lists the seeded users with their IDs and active flags.', inputSchema: z.object({}) },
-    async () => success({ users: listUsers(deps.db) }),
+    async () => success({ users: listUsers(runtime.store.db) }),
   );
 
   server.registerTool(
@@ -97,14 +97,14 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ object: objectName, fields, actingUserId }),
     },
     async ({ object, fields: values, actingUserId: userId }) =>
-      run(deps, userId, (ctx) => createdResult(createRecord(ctx, object, values))),
+      run(runtime, userId, (ctx) => createdResult(createRecord(ctx, object, values))),
   );
 
   server.registerTool(
     'get_record',
     { description: 'Gets one record by ID.', inputSchema: z.object({ object: objectName, id: recordId, actingUserId }) },
     async ({ object, id, actingUserId: userId }) =>
-      run(deps, userId, (ctx) => presentRecord(deps.db, object, getRecord(ctx, object, id))),
+      run(runtime, userId, (ctx) => presentRecord(runtime.store.db, object, getRecord(ctx, object, id))),
   );
 
   server.registerTool(
@@ -114,7 +114,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ object: objectName, id: recordId, fields, actingUserId }),
     },
     async ({ object, id, fields: values, actingUserId: userId }) =>
-      run(deps, userId, (ctx) => presentRecord(deps.db, object, updateRecord(ctx, object, id, values))),
+      run(runtime, userId, (ctx) => presentRecord(runtime.store.db, object, updateRecord(ctx, object, id, values))),
   );
 
   server.registerTool(
@@ -124,7 +124,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       inputSchema: z.object({ object: objectName, id: recordId, actingUserId }),
     },
     async ({ object, id, actingUserId: userId }) =>
-      run(deps, userId, (ctx) => {
+      run(runtime, userId, (ctx) => {
         deleteRecord(ctx, object, id);
         return { id, success: true, errors: [] };
       }),
@@ -154,9 +154,9 @@ export function createMcpServer(deps: McpDeps): McpServer {
       }),
     },
     async ({ actingUserId: userId, ...options }) =>
-      run(deps, userId, (ctx) => {
+      run(runtime, userId, (ctx) => {
         const result = queryRecords(ctx, options);
-        return { ...result, records: presentRecords(deps.db, options.object, result.records) };
+        return { ...result, records: presentRecords(runtime.store.db, options.object, result.records) };
       }),
   );
 
@@ -176,7 +176,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         actingUserId,
       }),
     },
-    async ({ actingUserId: userId, ...input }) => run(deps, userId, (ctx) => convertLead(ctx, input)),
+    async ({ actingUserId: userId, ...input }) => run(runtime, userId, (ctx) => convertLead(ctx, input)),
   );
 
   server.registerTool(
@@ -192,7 +192,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
         actingUserId,
       }),
     },
-    async ({ actingUserId: userId, ...input }) => run(deps, userId, (ctx) => createdResult(logCall(ctx, input))),
+    async ({ actingUserId: userId, ...input }) => run(runtime, userId, (ctx) => createdResult(logCall(ctx, input))),
   );
 
   server.registerTool(
@@ -211,7 +211,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       }),
     },
     async ({ actingUserId: userId, subject, status, priority, activityDate, whoId, whatId, description }) =>
-      run(deps, userId, (ctx) =>
+      run(runtime, userId, (ctx) =>
         createdResult(
           createRecord(ctx, 'Task', {
             Subject: subject,
@@ -239,7 +239,7 @@ export function createMcpServer(deps: McpDeps): McpServer {
       }),
     },
     async ({ actingUserId: userId, opportunityId, contactId, role, isPrimary }) =>
-      run(deps, userId, (ctx) =>
+      run(runtime, userId, (ctx) =>
         createdResult(
           createRecord(ctx, 'OpportunityContactRole', {
             OpportunityId: opportunityId,
@@ -266,9 +266,9 @@ export function createMcpServer(deps: McpDeps): McpServer {
       }),
     },
     async ({ actingUserId: userId, opportunityId, stageName, amount, nextStep }) =>
-      run(deps, userId, (ctx) =>
+      run(runtime, userId, (ctx) =>
         presentRecord(
-          deps.db,
+          runtime.store.db,
           'Opportunity',
           updateRecord(ctx, 'Opportunity', opportunityId, {
             StageName: stageName,
@@ -285,7 +285,63 @@ export function createMcpServer(deps: McpDeps): McpServer {
       description: 'Lists every create, update and delete since the last build or reset, oldest first.',
       inputSchema: z.object({ afterSeq: z.number().int().optional(), limit: z.number().int().optional() }),
     },
-    async ({ afterSeq, limit }) => run(deps, undefined, (ctx) => ({ mutations: listMutations(ctx, { afterSeq, limit }) })),
+    async ({ afterSeq, limit }) => run(runtime, undefined, (ctx) => ({ mutations: listMutations(ctx, { afterSeq, limit }) })),
+  );
+
+  const snapshotName = z.string().optional().describe('Snapshot name; defaults to "baseline", the build-time data set');
+
+  server.registerTool(
+    'reset_environment',
+    {
+      description:
+        'Restores the database to a snapshot (the baseline by default), byte-identical, and returns its sha256 and timing. ' +
+        'Clears the mutation log.',
+      inputSchema: z.object({ snapshot: snapshotName }),
+    },
+    async ({ snapshot }) => run(runtime, undefined, () => resetToSnapshot(runtime, snapshot)),
+  );
+
+  server.registerTool(
+    'create_snapshot',
+    {
+      description: 'Saves the current database as a named snapshot (lowercase letters, digits and dashes).',
+      inputSchema: z.object({ name: z.string() }),
+    },
+    async ({ name }) => run(runtime, undefined, () => createSnapshot(runtime, name)),
+  );
+
+  server.registerTool(
+    'list_snapshots',
+    { description: 'Lists the baseline and named snapshots with their sha256.', inputSchema: z.object({}) },
+    async () => run(runtime, undefined, () => ({ snapshots: listSnapshots(runtime.snapshots) })),
+  );
+
+  server.registerTool(
+    'verify_snapshot',
+    {
+      description: 'Compares the working database with a snapshot: file sha256, pending side files and per-table content.',
+      inputSchema: z.object({ snapshot: snapshotName }),
+    },
+    async ({ snapshot }) => run(runtime, undefined, () => verifySnapshot(runtime, snapshot)),
+  );
+
+  server.registerTool(
+    'get_clock',
+    { description: 'Returns the app clock: current instant, today, start and mode.', inputSchema: z.object({}) },
+    async () => success(describeClock(runtime)),
+  );
+
+  server.registerTool(
+    'set_clock',
+    {
+      description: 'Sets the app clock. mode "fixed" always returns start; "offset" advances from start with real time.',
+      inputSchema: z.object({ start: z.string().optional(), mode: z.enum(['fixed', 'offset']).optional() }),
+    },
+    async ({ start, mode }) =>
+      run(runtime, undefined, () => {
+        setClock(runtime, { start: start ?? runtime.clockSetting.start, mode: mode ?? runtime.clockSetting.mode });
+        return describeClock(runtime);
+      }),
   );
 
   return server;

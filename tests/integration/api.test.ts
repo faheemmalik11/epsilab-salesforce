@@ -2,21 +2,24 @@ import fs from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { buildApiApp } from '../../src/server/app.js';
-import { fixedClock } from '../../src/server/clock.js';
-import { createTestDb, type TestDb } from '../helpers.js';
+import type { Runtime } from '../../src/server/environment/runtime.js';
+import { createTestDb, testRuntime, type TestDb } from '../helpers.js';
 
 const manifest = JSON.parse(fs.readFileSync('seed/manifest.json', 'utf8'));
 
 describe('REST API', () => {
   let t: TestDb;
   let app: FastifyInstance;
+  let runtime: Runtime;
 
   beforeAll(async () => {
     t = createTestDb();
-    app = await buildApiApp({ db: t.db, clock: fixedClock('2028-11-11T09:00:00Z'), mcpAllowedHosts: ['localhost'] });
+    runtime = testRuntime(t.file);
+    app = await buildApiApp(runtime, { mcpAllowedHosts: ['localhost'] });
   });
   afterAll(async () => {
     await app.close();
+    runtime.store.close();
     t.cleanup();
   });
 

@@ -46,6 +46,12 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): AppConfig {
   };
 }
 
+/** The working database the app reads and writes. */
 export function databasePath(config: Pick<AppConfig, 'dataDir'>): string {
   return path.join(config.dataDir, 'app.db');
+}
+
+/** Baseline and named snapshots. */
+export function snapshotDir(config: Pick<AppConfig, 'dataDir'>): string {
+  return path.join(config.dataDir, 'snapshots');
 }

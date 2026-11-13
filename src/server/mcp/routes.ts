@@ -1,7 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import { hostHeaderValidation } from '@modelcontextprotocol/fastify';
 import { NodeStreamableHTTPServerTransport } from '@modelcontextprotocol/node';
-import { createMcpServer, type McpDeps } from './server.js';
+import type { Runtime } from '../environment/runtime.js';
+import { createMcpServer } from './server.js';
 
 const methodNotAllowed = {
   jsonrpc: '2.0',
@@ -9,15 +10,12 @@ const methodNotAllowed = {
   id: null,
 };
 
-export async function registerMcpRoutes(
-  app: FastifyInstance,
-  deps: McpDeps & { allowedHosts: string[] },
-): Promise<void> {
-  const onRequest = hostHeaderValidation(deps.allowedHosts);
+export async function registerMcpRoutes(app: FastifyInstance, runtime: Runtime, allowedHosts: string[]): Promise<void> {
+  const onRequest = hostHeaderValidation(allowedHosts);
 
   // Stateless: one server and transport per request, as in the SDK's Fastify example.
   app.post('/mcp', { onRequest }, async (request, reply) => {
-    const server = createMcpServer(deps);
+    const server = createMcpServer(runtime);
     const transport = new NodeStreamableHTTPServerTransport({ sessionIdGenerator: undefined });
     reply.raw.on('close', () => {
       void transport.close();

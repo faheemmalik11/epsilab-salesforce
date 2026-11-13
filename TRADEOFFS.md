@@ -25,6 +25,10 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | REST follows Salesforce shapes: create returns `201 { id, success, errors }`, PATCH and DELETE return 204, records carry `attributes` | Familiar to anyone who knows the Salesforce REST API |
 | Queries use `POST /api/query` with a JSON filter, not SOQL | A SOQL parser is out of scope for one day; the JSON form maps directly to the service query and the MCP tool |
 | MCP adds convenience tools (`log_call`, `create_task`, `add_contact_role`, `update_opportunity_stage`) beside generic CRUD | Easier for agents; each is a thin call into the same service functions |
+| Reset copies a verified snapshot file over the working database while the connection is closed, then hashes it before reopening | AC6 asks for byte-identical; a file copy is exact and takes under 100 ms for the 14 MB database |
+| Reset is fully synchronous inside the Node process | No request can run between closing and reopening the database, which is the app-level lock the plan called for |
+| Snapshots are checked against their recorded sha256 before use; a damaged snapshot is refused and nothing changes | A reset must never leave a half-restored database |
+| A baseline per `SEED_PROFILE` is built into the image; start-up copies the chosen one to the working database | `SEED_PROFILE` now takes effect at runtime without a rebuild, and start-up runs no SQL writes |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
 ## Stubbed
@@ -98,7 +102,10 @@ Each one is recorded with its source in `docs/reference/`.
 | Users are read-only as an object: create, edit and delete return `INSUFFICIENT_ACCESS_OR_READONLY` | Users are seeded only; the brief puts user management out of scope |
 | Malformed JSON bodies return `JSON_PARSER_ERROR` | That's the REST-specific code Salesforce uses; it isn't in the SOAP StatusCode list we could read, so this is from memory |
 | Bad query paging returns `MALFORMED_QUERY`; an unknown operator returns `INVALID_QUERY_FILTER_OPERATOR` | Documented Salesforce codes |
-| `SEED_PROFILE` and `CLOCK` shape the baseline data at image build; at runtime `CLOCK` and `CLOCK_MODE` drive the app clock | The baseline is built once per image so start-up never writes; per-profile snapshots come with the reset work in Phase 8 |
+| Generated data is anchored to the image-build clock; at runtime `CLOCK` and `CLOCK_MODE` drive the app clock, which can also be changed through the admin API | Baselines must be identical on every start for byte-identical reset |
+| Reset restores data, not configuration: the clock and `SEED_PROFILE` stay as set | They are environment settings, not part of the database |
+| `small` profile generates 2 accounts, `default` 5 (Phase 7 grows `default`) | Two profiles prove the setting works; both import the full seed |
+| Admin errors use the non-Salesforce code `INVALID_SNAPSHOT` | The admin API has no Salesforce equivalent |
 | The Lead path shows Open - Not Contacted, Working - Contacted, Closed - Not Converted, then Converted; seed statuses such as Prospecting show in the record but not as path steps | The seed's custom statuses have no defined order; the path covers the brief's workflow |
 | Home shows the acting user's open tasks and recently updated opportunities | The full Seller Home layout from the brief's screenshot is Phase 6b |
 | The acting user is chosen in the header and remembered in the browser | The brief allows "a header or a dropdown"; inactive users are listed but cannot be chosen |

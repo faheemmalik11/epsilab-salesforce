@@ -1,7 +1,9 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { isObjectName, type ObjectName } from '../metadata/index.js';
 import { createdResult, describeObject, listObjects, presentRecord, presentRecords } from '../presenters.js';
-import { contextFor, type RuntimeDeps } from '../requestContext.js';
+import type { Runtime } from '../environment/runtime.js';
+import { registerAdminRoutes } from './admin.js';
+import { contextFor } from '../requestContext.js';
 import {
   convertLead,
   createRecord,
@@ -18,8 +20,6 @@ import {
   type QueryOptions,
 } from '../services/index.js';
 import { fail, notFound } from '../services/errors.js';
-
-export type ApiDeps = RuntimeDeps;
 
 type ObjectParams = { object: string };
 type RecordParams = { object: string; id: string };
@@ -52,16 +52,18 @@ function optionalInt(name: string, value: string | undefined): number | undefine
 }
 
 /** REST routes. Each one only translates HTTP to a shared service call and back. */
-export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Promise<void> {
-  const ctx = (request: FastifyRequest) => contextFor(deps, actingUser(request));
+export async function registerApiRoutes(app: FastifyInstance, runtime: Runtime): Promise<void> {
+  const ctx = (request: FastifyRequest) => contextFor(runtime, actingUser(request));
 
-  app.get('/api/health', async () => getHealth(deps.db));
+  await registerAdminRoutes(app, runtime);
 
-  app.get('/api/users', async () => listUsers(deps.db));
+  app.get('/api/health', async () => getHealth(runtime.store.db));
+
+  app.get('/api/users', async () => listUsers(runtime.store.db));
 
   app.get('/api/users/current', async (request) => {
     const { actingUserId } = ctx(request);
-    return listUsers(deps.db).find((u) => u.Id === actingUserId);
+    return listUsers(runtime.store.db).find((u) => u.Id === actingUserId);
   });
 
   app.get('/api/sobjects', async () => ({ sobjects: listObjects() }));
@@ -77,7 +79,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
 
   app.get<{ Params: RecordParams }>('/api/sobjects/:object/:id', async (request) => {
     const object = objectName(request.params.object);
-    return presentRecord(deps.db, object, getRecord(ctx(request), object, request.params.id));
+    return presentRecord(runtime.store.db, object, getRecord(ctx(request), object, request.params.id));
   });
 
   app.patch<{ Params: RecordParams }>('/api/sobjects/:object/:id', async (request, reply) => {
@@ -94,7 +96,7 @@ export async function registerApiRoutes(app: FastifyInstance, deps: ApiDeps): Pr
     const options = body(request) as unknown as QueryOptions;
     const object = objectName(String(options.object));
     const result = queryRecords(ctx(request), { ...options, object });
-    return { ...result, records: presentRecords(deps.db, object, result.records) };
+    return { ...result, records: presentRecords(runtime.store.db, object, result.records) };
   });
 
   app.post<{ Params: { id: string } }>('/api/leads/:id/convert', async (request) =>

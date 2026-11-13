@@ -39,6 +39,9 @@ echo "== MCP:  $(npx tsx tests/smoke/mcp-check.ts http://localhost:8080/mcp)"
 echo "== GUI (Playwright)"
 BASE_URL=http://localhost:3000 API_URL=http://localhost:8080 npx playwright test --reporter=line
 
+echo "== reset CLI inside the container (after the browser tests' edits)"
+docker compose exec -T app node dist/server/scripts/reset.js | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);console.log(`reset ${r.snapshot}: matches=${r.matches} in ${r.durationMs} ms`);process.exit(r.matches?0:1)})'
+
 docker compose down >/dev/null
 
 echo "== offline (--network none)"

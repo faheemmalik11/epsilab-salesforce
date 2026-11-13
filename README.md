@@ -2,7 +2,7 @@
 
 A working clone of the Salesforce Sales Cloud core (Lead, Account, Contact, Opportunity, Task, with seeded Users), with a GUI, a REST API and an MCP server on one shared service layer.
 
-Status: Phase 6a (Lightning GUI for the full lifecycle). Phase 6b adds visual polish and the full Seller Home page. See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
+Status: Phase 8 (reset, snapshots, clock) on top of the Phase 6a GUI. Phase 6b adds visual polish and the full Seller Home page. See `PLAN.md` for the phases and `docs/REQUIREMENTS.md` for the requirements checklist.
 
 ## Run with Docker
 
@@ -56,11 +56,25 @@ Shaped like the Salesforce REST API. Errors are always the Salesforce array `[{ 
 
 Query operators: `eq`, `ne`, `in`, `isNull`, `notNull`, `contains`. The All Leads view is `IsConverted eq false`.
 
+## Reset, snapshots and clock
+
+The image contains a baseline database per `SEED_PROFILE` (`default`, `small`), built from the seed at image build. At start-up the app copies the chosen profile's baseline to its working database; no SQL runs at start-up.
+
+| Action | REST | MCP | CLI |
+|---|---|---|---|
+| Reset to the baseline (or a named snapshot), byte-identical | `POST /api/admin/reset` `{ "snapshot"? }` | `reset_environment` | `pnpm reset [name]`, or in the container `docker compose exec app node dist/server/scripts/reset.js` |
+| Save a named snapshot | `POST /api/admin/snapshots` `{ "name" }` | `create_snapshot` | |
+| List snapshots | `GET /api/admin/snapshots` | `list_snapshots` | |
+| Prove a restore: file sha256, side files, per-table content | `GET /api/admin/snapshots/{name}/verify` | `verify_snapshot` | |
+| Read or set the clock | `GET` / `POST /api/admin/clock` `{ "start", "mode" }` | `get_clock`, `set_clock` | |
+
+A reset returns `{ snapshot, sha256, matches, durationMs, removedSideFiles }` and clears the mutation log. It does not change the clock.
+
 ## Develop
 
 ```bash
 pnpm install
-pnpm build && pnpm build:db    # builds the server, the GUI and data/app.db
+pnpm build && pnpm build:db    # builds the server, the GUI and the baseline snapshots in data/snapshots
 pnpm start                     # GUI on :3000, REST and MCP on :8080
 pnpm test                      # unit and integration tests
 pnpm e2e                       # Playwright GUI tests (starts its own server on ports 3100/8180 with a fresh database)
@@ -82,4 +96,6 @@ Streamable HTTP, stateless, at `http://localhost:8080/mcp`. Every tool calls the
 | `log_call`, `create_task` | Activities |
 | `add_contact_role` | Contact role on an opportunity |
 | `update_opportunity_stage` | Stage change, with optional amount and next step |
-| `get_mutation_log` | Changes since the last build |
+| `get_mutation_log` | Changes since the last build or reset |
+| `reset_environment`, `create_snapshot`, `list_snapshots`, `verify_snapshot` | Reset and snapshots |
+| `get_clock`, `set_clock` | The app clock |

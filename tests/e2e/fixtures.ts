@@ -36,7 +36,10 @@ export function expectHealthy(health: PageHealth, allowedFailures: RegExp[] = []
   const allowed = (text: string) => allowedFailures.some((pattern) => pattern.test(text));
   expect(health.externalRequests).toEqual([]);
   expect(health.failedRequests.filter((f) => !allowed(f))).toEqual([]);
-  expect(health.consoleErrors.filter((e) => !(allowedFailures.length > 0 && /status of 400/.test(e)))).toEqual([]);
+  // Chrome also logs each expected 4xx response to the console as "Failed to load resource".
+  const allowedStatuses = new Set(allowedFailures.map((p) => p.source.match(/^(\d{3})/)?.[1]).filter(Boolean));
+  const expectedLog = (e: string) => [...allowedStatuses].some((status) => e.includes(`status of ${status}`));
+  expect(health.consoleErrors.filter((e) => !expectedLog(e))).toEqual([]);
 }
 
 export async function restCreate(api: APIRequestContext, object: string, fields: Record<string, unknown>): Promise<string> {

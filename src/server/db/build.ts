@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import path from 'node:path';
-import { generateMinimal, type GenerateReport } from '../seed/generate.js';
+import { baselineFile, writeSnapshot, type SnapshotInfo } from '../environment/snapshots.js';
+import { generateMinimal, PROFILES, type GenerateReport } from '../seed/generate.js';
 import { importSeed, type ImportReport } from '../seed/importer.js';
 import { readManifest } from '../seed/manifest.js';
 import { createSchema } from './schema.js';
@@ -67,4 +68,20 @@ export function buildDatabase(dbFile: string, seedDir: string, options: BuildOpt
   } finally {
     if (db.open) db.close();
   }
+}
+
+export interface BaselineReport extends BuildReport {
+  profile: string;
+  snapshot: SnapshotInfo;
+}
+
+/** Builds one baseline snapshot per SEED_PROFILE into `snapshotDir`. Runs at image build. */
+export function buildBaselines(snapshotDir: string, seedDir: string, clock: string): BaselineReport[] {
+  return Object.keys(PROFILES).map((profile) => {
+    const temp = path.join(snapshotDir, `building-${profile}.db`);
+    const report = buildDatabase(temp, seedDir, { profile, clock });
+    const snapshot = writeSnapshot(temp, baselineFile(snapshotDir, profile));
+    fs.rmSync(temp, { force: true });
+    return { ...report, profile, snapshot };
+  });
 }

@@ -2,18 +2,20 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { FastifyInstance } from 'fastify';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { buildApiApp } from '../../src/server/app.js';
-import { fixedClock } from '../../src/server/clock.js';
+import type { Runtime } from '../../src/server/environment/runtime.js';
 import { getHealth } from '../../src/server/services/health.js';
-import { createTestDb, type TestDb } from '../helpers.js';
+import { createTestDb, testRuntime, type TestDb } from '../helpers.js';
 
 describe('MCP over Streamable HTTP', () => {
   let t: TestDb;
   let app: FastifyInstance;
+  let runtime: Runtime;
   let baseUrl: string;
 
   beforeAll(async () => {
     t = createTestDb();
-    app = await buildApiApp({ db: t.db, clock: fixedClock('2028-11-11T09:00:00Z'), mcpAllowedHosts: ['localhost', '127.0.0.1'] });
+    runtime = testRuntime(t.file);
+    app = await buildApiApp(runtime, { mcpAllowedHosts: ['localhost', '127.0.0.1'] });
     await app.listen({ host: '127.0.0.1', port: 0 });
     const address = app.server.address();
     if (typeof address !== 'object' || !address) throw new Error('no address');
@@ -21,6 +23,7 @@ describe('MCP over Streamable HTTP', () => {
   });
   afterAll(async () => {
     await app.close();
+    runtime.store.close();
     t.cleanup();
   });
 

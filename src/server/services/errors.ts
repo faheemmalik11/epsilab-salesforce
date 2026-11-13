@@ -18,7 +18,9 @@ export type ErrorCode =
   | 'MALFORMED_QUERY'
   | 'INVALID_QUERY_FILTER_OPERATOR'
   | 'JSON_PARSER_ERROR'
-  | 'UNKNOWN_EXCEPTION';
+  | 'UNKNOWN_EXCEPTION'
+  /** Not a Salesforce code: admin snapshot and reset errors. */
+  | 'INVALID_SNAPSHOT';
 
 export interface ApiError {
   errorCode: ErrorCode;

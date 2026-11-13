@@ -4,16 +4,21 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { buildApiApp } from '../src/server/app.js';
-import { fixedClock } from '../src/server/clock.js';
 import { buildDatabase } from '../src/server/db/build.js';
-import { openDatabase, type Db } from '../src/server/db/connection.js';
+import type { Db } from '../src/server/db/connection.js';
+import { createRuntime, type Runtime } from '../src/server/environment/runtime.js';
+import { baselineFile, prepareWorkingDatabase, writeSnapshot } from '../src/server/environment/snapshots.js';
+import { DbStore } from '../src/server/environment/store.js';
 import { SEED_DIR } from './helpers.js';
 
 export const CLOCK = '2028-11-11T09:00:00Z';
 
 export interface Harness {
-  db: Db;
+  /** The current connection; it changes after a reset. */
+  readonly db: Db;
   dbFile: string;
+  snapshotDir: string;
+  runtime: Runtime;
   app: FastifyInstance;
   baseUrl: string;
   rest(method: string, url: string, body?: unknown, headers?: Record<string, string>): Promise<RestResponse>;
@@ -33,18 +38,27 @@ export interface ToolResult {
   data: any;
 }
 
-/** A real seeded database (21,628 leads) behind the API app, listening on a random local port. */
+/**
+ * A real seeded baseline snapshot (21,628 leads) and a working copy prepared as the app does at
+ * start-up, behind the API app on a random local port.
+ */
 export async function startHarness(options: { defaultUserId?: string } = {}): Promise<Harness> {
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'epsilab-api-'));
+  const snapshotDir = path.join(dir, 'snapshots');
+  const built = path.join(dir, 'built.db');
+  buildDatabase(built, SEED_DIR, { profile: 'default', clock: CLOCK });
+  writeSnapshot(built, baselineFile(snapshotDir, 'default'));
+  fs.rmSync(built);
   const dbFile = path.join(dir, 'app.db');
-  buildDatabase(dbFile, SEED_DIR, { profile: 'default', clock: CLOCK });
-  const db = openDatabase(dbFile);
-  const app = await buildApiApp({
-    db,
-    clock: fixedClock(CLOCK),
+  const snapshots = { dir: snapshotDir, profile: 'default' };
+  prepareWorkingDatabase(snapshots, dbFile);
+  const runtime = createRuntime({
+    store: new DbStore(dbFile),
+    clock: { start: CLOCK, mode: 'fixed' },
+    snapshots,
     defaultUserId: options.defaultUserId ?? null,
-    mcpAllowedHosts: ['127.0.0.1', 'localhost'],
   });
+  const app = await buildApiApp(runtime, { mcpAllowedHosts: ['127.0.0.1', 'localhost'] });
   await app.listen({ host: '127.0.0.1', port: 0 });
   const address = app.server.address();
   if (typeof address !== 'object' || !address) throw new Error('no address');
@@ -52,8 +66,12 @@ export async function startHarness(options: { defaultUserId?: string } = {}): Pr
   const clients: Client[] = [];
 
   return {
-    db,
+    get db() {
+      return runtime.store.db;
+    },
     dbFile,
+    snapshotDir,
+    runtime,
     app,
     baseUrl,
     async rest(method, url, body, headers = {}) {
@@ -76,11 +94,11 @@ export async function startHarness(options: { defaultUserId?: string } = {}): Pr
       const data = result.structuredContent as any;
       return { isError: result.isError === true, data: result.isError ? data.errors : data };
     },
-    count: (table) => (db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get() as { n: number }).n,
+    count: (table) => (runtime.store.db.prepare(`SELECT COUNT(*) AS n FROM "${table}"`).get() as { n: number }).n,
     async close() {
       await Promise.all(clients.map((c) => c.close()));
       await app.close();
-      db.close();
+      runtime.store.close();
       fs.rmSync(dir, { recursive: true, force: true });
     },
   };

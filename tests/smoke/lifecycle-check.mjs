@@ -66,4 +66,14 @@ const opp = await rest('POST', '/api/sobjects/Opportunity', { Name: 'Direct', Ac
 const seen = await tool('get_record', { object: 'Opportunity', id: opp.body.id });
 check('direct path across REST and MCP', contact.data.success && seen.data.AccountId === acct.body.id, { contact, seen });
 
+// AC6: the edits above are undone byte for byte.
+const before = await rest('GET', '/api/admin/snapshots/baseline/verify');
+check('edits changed the database', before.body.matches === false, before.body);
+const reset = await rest('POST', '/api/admin/reset', {});
+check(`reset in ${reset.body.durationMs} ms`, reset.body.matches === true && reset.body.durationMs < 10000, reset.body);
+const verify = await rest('GET', '/api/admin/snapshots/baseline/verify');
+check('byte-identical and content-identical', verify.body.matches && verify.body.contentMatches && verify.body.sideFiles.length === 0, verify.body);
+const hotAfter = await rest('POST', '/api/query', hot);
+check('7111 Hot after reset', hotAfter.body.totalSize === 7111, hotAfter.body.totalSize);
+
 console.log('LIFECYCLE CHECK PASSED');

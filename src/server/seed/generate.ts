@@ -22,7 +22,12 @@ export interface GenerateReport {
   Task: number;
 }
 
-const ACCOUNT_COUNT = 5;
+/** SEED_PROFILE values and how much each generates. Phase 7 grows "default". */
+export const PROFILES: Record<string, { accounts: number }> = {
+  default: { accounts: 5 },
+  small: { accounts: 2 },
+};
+
 const CONTACTS_PER_ACCOUNT = 2;
 const STAGES = ['Prospecting', 'Qualification', 'Value Proposition', 'Closed Won', 'Closed Lost'] as const;
 const DEALS = ['Annual Subscription', 'Pilot', 'Expansion', 'Renewal', 'Services'] as const;
@@ -44,14 +49,14 @@ function addDays(isoDate: string, days: number): string {
 }
 
 /** Companies shared by several seed leads, most shared first: realistic candidates for existing accounts. */
-function sharedCompanies(db: Db): string[] {
+function sharedCompanies(db: Db, limit: number): string[] {
   return (
     db
       .prepare(
         `SELECT "Company" AS company FROM "Lead" GROUP BY "Company" HAVING COUNT(*) > 1
          ORDER BY COUNT(*) DESC, "Company" LIMIT ?`,
       )
-      .all(ACCOUNT_COUNT) as { company: string }[]
+      .all(limit) as { company: string }[]
   ).map((r) => r.company);
 }
 
@@ -92,6 +97,8 @@ function opportunityFor(rng: Random, today: string, account: SObject, index: num
  * a primary contact role and tasks. It never creates, edits or converts a lead.
  */
 export function generateMinimal(db: Db, options: GenerateOptions): GenerateReport {
+  const profile = PROFILES[options.profile];
+  if (!profile) throw new Error(`Unknown SEED_PROFILE "${options.profile}". Use one of: ${Object.keys(PROFILES).join(', ')}`);
   const rng = createRandom(`epsilab:${options.profile}`);
   const clock = fixedClock(options.clock);
   const ctx: ServiceContext = { db, clock, actingUserId: resolveActingUser(db) };
@@ -100,7 +107,7 @@ export function generateMinimal(db: Db, options: GenerateOptions): GenerateRepor
   const report: GenerateReport = { Account: 0, Contact: 0, Opportunity: 0, OpportunityContactRole: 0, Task: 0 };
 
   db.transaction(() => {
-    sharedCompanies(db).forEach((company, index) => {
+    sharedCompanies(db, profile.accounts).forEach((company, index) => {
       const ownerId = owners[index % owners.length]!;
       const people = leadsAt(db, company);
       const account = createRecord(ctx, 'Account', {

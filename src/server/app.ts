@@ -5,10 +5,10 @@ import fastifyStatic from '@fastify/static';
 import { registerErrorHandler } from './api/errors.js';
 import { registerApiRoutes } from './api/routes.js';
 import { registerMcpRoutes } from './mcp/routes.js';
-import type { RuntimeDeps } from './requestContext.js';
+import type { Runtime } from './environment/runtime.js';
 import { apiError } from './services/errors.js';
 
-export interface AppDeps extends RuntimeDeps {
+export interface AppOptions {
   mcpAllowedHosts: string[];
   logger?: boolean;
 }
@@ -24,11 +24,11 @@ function isClientRoute(url: string): boolean {
 }
 
 /** REST API and MCP endpoint, served on API_PORT. */
-export async function buildApiApp(deps: AppDeps): Promise<FastifyInstance> {
-  const app = Fastify({ logger: deps.logger ?? false });
+export async function buildApiApp(runtime: Runtime, options: AppOptions): Promise<FastifyInstance> {
+  const app = Fastify({ logger: options.logger ?? false });
   registerErrorHandler(app);
-  await registerApiRoutes(app, deps);
-  await registerMcpRoutes(app, { ...deps, allowedHosts: deps.mcpAllowedHosts });
+  await registerApiRoutes(app, runtime);
+  await registerMcpRoutes(app, runtime, options.mcpAllowedHosts);
   app.setNotFoundHandler((_request, reply) => sendNotFound(reply));
   return app;
 }
@@ -37,16 +37,16 @@ export async function buildApiApp(deps: AppDeps): Promise<FastifyInstance> {
  * Built GUI on GUI_PORT. It also mounts the REST routes so the browser calls the
  * API on its own origin, which avoids CORS between the two ports.
  */
-export async function buildGuiApp(deps: AppDeps & { webDir: string }): Promise<FastifyInstance> {
-  const indexFile = path.join(deps.webDir, 'index.html');
+export async function buildGuiApp(runtime: Runtime, options: AppOptions & { webDir: string }): Promise<FastifyInstance> {
+  const indexFile = path.join(options.webDir, 'index.html');
   if (!fs.existsSync(indexFile)) {
-    throw new Error(`GUI build not found at ${deps.webDir}. Run "pnpm build:web" first.`);
+    throw new Error(`GUI build not found at ${options.webDir}. Run "pnpm build:web" first.`);
   }
 
-  const app = Fastify({ logger: deps.logger ?? false });
+  const app = Fastify({ logger: options.logger ?? false });
   registerErrorHandler(app);
-  await registerApiRoutes(app, deps);
-  await app.register(fastifyStatic, { root: deps.webDir });
+  await registerApiRoutes(app, runtime);
+  await app.register(fastifyStatic, { root: options.webDir });
   app.setNotFoundHandler((request, reply) =>
     request.method === 'GET' && isClientRoute(request.url) ? reply.sendFile('index.html') : sendNotFound(reply),
   );
