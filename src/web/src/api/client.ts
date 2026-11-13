@@ -7,6 +7,8 @@ import type {
   QueryInput,
   QueryResult,
   ResetResult,
+  SyntheticDataResult,
+  SyntheticDataStatus,
   SRecord,
   User,
 } from './types';
@@ -61,6 +63,8 @@ export const api = {
     request<ConvertResult>('POST', `/api/leads/${leadId}/convert`, input),
   clock: () => request<ClockInfo>('GET', '/api/admin/clock'),
   /** The existing environment reset; the GUI adds no reset logic of its own. */
-  resetEnvironment: () => request<ResetResult>('POST', '/api/admin/reset', {}),
+  resetEnvironment: (snapshot?: string) => request<ResetResult>('POST', '/api/admin/reset', snapshot ? { snapshot } : {}),
+  syntheticData: () => request<SyntheticDataStatus>('GET', '/api/admin/synthetic-data'),
+  generateSyntheticData: () => request<SyntheticDataResult>('POST', '/api/admin/synthetic-data', {}),
   logCall: (input: Record<string, unknown>) => request<{ id: string }>('POST', '/api/tasks/log-call', input),
 };

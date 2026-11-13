@@ -17,7 +17,7 @@ What this Salesforce Sales Cloud clone supports, following the brief's tiers. Ou
 | Navigation | App sidebar (Home, Contacts, Accounts, Sales), object tabs with New, recent records and list view menus, acting-user switcher |
 | Seller Home | Build Pipeline, Today's Tasks (with filters and completion), Recent Records |
 | Data | Seed import (21,628 leads, 9 users) with hash checks; a deterministic generator for accounts, contacts, opportunities, contact roles and tasks, with realistic mess |
-| Environment | Byte-identical reset (REST, MCP, CLI, and a GUI demo admin control with confirmation), named snapshots and verification, the app clock, the mutation log; `SEED_PROFILE` at runtime |
+| Environment | Byte-identical reset (REST, MCP, CLI, and a GUI demo admin control with confirmation), named snapshots and verification, a seed-only reset and on-demand synthetic data generation (REST, MCP and the GUI), the app clock, the mutation log; `SEED_PROFILE` at runtime |
 | Queries | REST `POST /api/query` and the MCP `query_records` tool: `eq`, `ne`, `in` (case-insensitive on text), `isNull`, `notNull`, `contains`, sorting and paging |
 
 ## Tier 2: read-only

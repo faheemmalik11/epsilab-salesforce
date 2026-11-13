@@ -3,7 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import type { TestProject } from 'vitest/node';
 import { buildBaselines } from '../src/server/db/build.js';
-import { baselineFile } from '../src/server/environment/snapshots.js';
+import { baselineFile, seedOnlyFile } from '../src/server/environment/snapshots.js';
 import type { CachedBaselines } from './baselines.js';
 import { BUILD_CLOCK } from './baselines.js';
 
@@ -16,7 +16,10 @@ export default function setup(project: TestProject) {
   const snapshotDir = path.join(dir, 'snapshots');
   const reports = buildBaselines(snapshotDir, path.resolve('seed'), BUILD_CLOCK);
   const cached: CachedBaselines = Object.fromEntries(
-    reports.map((r) => [r.profile, { file: baselineFile(snapshotDir, r.profile), sha256: r.snapshot.sha256, import: r.import, generated: r.generated }]),
+    reports.map((r) => [
+      r.profile,
+      { file: baselineFile(snapshotDir, r.profile), sha256: r.snapshot.sha256, seedOnlyFile: seedOnlyFile(snapshotDir, r.profile), import: r.import, generated: r.generated },
+    ]),
   );
   project.provide('baselines', cached);
   return () => fs.rmSync(dir, { recursive: true, force: true });

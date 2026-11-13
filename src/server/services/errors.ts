@@ -20,7 +20,9 @@ export type ErrorCode =
   | 'JSON_PARSER_ERROR'
   | 'UNKNOWN_EXCEPTION'
   /** Not a Salesforce code: admin snapshot and reset errors. */
-  | 'INVALID_SNAPSHOT';
+  | 'INVALID_SNAPSHOT'
+  /** Not a Salesforce code: synthetic data was asked for where it already exists. */
+  | 'SYNTHETIC_DATA_EXISTS';
 
 export interface ApiError {
   errorCode: ErrorCode;

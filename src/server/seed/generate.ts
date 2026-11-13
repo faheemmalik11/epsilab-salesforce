@@ -14,6 +14,8 @@ export interface GenerateOptions {
   profile: string;
   /** ISO instant the generated history ends at (the CLOCK setting). */
   clock: string;
+  /** Keep mutation log entries from before the run: generating into a live database must not erase its history. */
+  keepEarlierLog?: boolean;
 }
 
 export interface GenerateReport {
@@ -553,6 +555,7 @@ export function generateData(db: Db, options: GenerateOptions): GenerateReport {
   };
   if (gen.owners.length === 0) throw new Error('The seed has no active users to own generated records.');
 
+  const lastSeq = (db.prepare('SELECT COALESCE(MAX(seq), 0) AS seq FROM mutation_log').get() as { seq: number }).seq;
   db.transaction(() => {
     const shared = db
       .prepare(`SELECT "Company" AS company FROM "Lead" GROUP BY "Company" HAVING COUNT(*) > 1 ORDER BY COUNT(*) DESC, "Company" LIMIT ?`)
@@ -575,8 +578,8 @@ export function generateData(db: Db, options: GenerateOptions): GenerateReport {
 
     workLeads(gen, profile.leadsWithActivity);
 
-    // The baseline holds no history: the mutation log starts empty after a build or reset.
-    db.prepare('DELETE FROM mutation_log').run();
+    // Generation is not history: the log holds none of it, and starts empty after a build or reset.
+    db.prepare('DELETE FROM mutation_log WHERE seq > ?').run(options.keepEarlierLog ? lastSeq : 0);
   })();
   // Reclaim the pages the generation's mutation log used, so the baseline file is compact.
   db.exec('VACUUM');

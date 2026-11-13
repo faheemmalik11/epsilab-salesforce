@@ -6,9 +6,9 @@ import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/cli
 import { buildApiApp } from '../src/server/app.js';
 import type { Db } from '../src/server/db/connection.js';
 import { createRuntime, type Runtime } from '../src/server/environment/runtime.js';
-import { baselineFile, prepareWorkingDatabase, writeSnapshot } from '../src/server/environment/snapshots.js';
+import { baselineFile, prepareWorkingDatabase, seedOnlyFile, writeSnapshot } from '../src/server/environment/snapshots.js';
 import { DbStore } from '../src/server/environment/store.js';
-import { BUILD_CLOCK as CLOCK, copyBaseline } from './baselines.js';
+import { BUILD_CLOCK as CLOCK, cachedBaseline, copyBaseline } from './baselines.js';
 
 export { CLOCK };
 
@@ -48,6 +48,7 @@ export async function startHarness(options: { defaultUserId?: string; profile?: 
   const built = path.join(dir, 'built.db');
   copyBaseline(profile, built);
   writeSnapshot(built, baselineFile(snapshotDir, profile));
+  writeSnapshot(cachedBaseline(profile).seedOnlyFile, seedOnlyFile(snapshotDir, profile));
   fs.rmSync(built);
   const dbFile = path.join(dir, 'app.db');
   const snapshots = { dir: snapshotDir, profile };

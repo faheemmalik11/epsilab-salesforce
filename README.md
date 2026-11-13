@@ -112,13 +112,15 @@ The same seed, profile and `CLOCK` always produce the same database, byte for by
 
 ## Reset, snapshots and clock
 
-The image contains a baseline database per `SEED_PROFILE` (`default`, `small`), built from the seed at image build. At start-up the app copies the chosen profile's baseline to its working database; no SQL runs at start-up.
+The image contains a baseline database per `SEED_PROFILE` (`default`, `small`), built from the seed at image build, and a seed-only snapshot beside each. The app starts on the baseline, with the generated records; the seed-only state is opt-in. The settings gear also offers **Reset to Seed Only** and **Generate Synthetic Data**. At start-up the app copies the chosen profile's baseline to its working database; no SQL runs at start-up.
 
 | Action | REST | MCP | CLI |
 |---|---|---|---|
 | Reset to the baseline (or a named snapshot), byte-identical | `POST /api/admin/reset` `{ "snapshot"? }` | `reset_environment` | `pnpm reset [name]`, or in the container `docker compose exec app node dist/server/scripts/reset.js` |
 
 In the GUI, the settings gear at the top right opens **Environment Controls (demo admin)** → **Reset to Baseline**. It asks for confirmation, calls the same `POST /api/admin/reset`, and on success clears every cached record and returns to Seller Home. It is a control for this assessment environment, not a Salesforce feature.
+| Reset to the seed alone (21,628 leads, 9 users, nothing generated), byte-identical | `POST /api/admin/reset` `{ "snapshot": "seed-only" }` | `reset_environment` | `pnpm reset seed-only` |
+| Generate the synthetic records into a seed-only database (refused when they already exist) | `POST /api/admin/synthetic-data`; status at `GET /api/admin/synthetic-data` | `generate_synthetic_data`, `get_synthetic_data_status` | |
 | Save a named snapshot | `POST /api/admin/snapshots` `{ "name" }` | `create_snapshot` | |
 | List snapshots | `GET /api/admin/snapshots` | `list_snapshots` | |
 | Prove a restore: file sha256, side files, per-table content | `GET /api/admin/snapshots/{name}/verify` | `verify_snapshot` | |
@@ -154,4 +156,5 @@ Streamable HTTP, stateless, at `http://localhost:8080/mcp`. Every tool calls the
 | `update_opportunity_stage` | Stage change, with optional amount and next step |
 | `get_mutation_log` | Changes since the last build or reset |
 | `reset_environment`, `create_snapshot`, `list_snapshots`, `verify_snapshot` | Reset and snapshots |
+| `generate_synthetic_data`, `get_synthetic_data_status` | Generate the synthetic records after a seed-only reset |
 | `get_clock`, `set_clock` | The app clock |

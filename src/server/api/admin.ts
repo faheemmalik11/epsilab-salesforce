@@ -1,6 +1,7 @@
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { describeClock, setClock, type Runtime } from '../environment/runtime.js';
 import { createSnapshot, listSnapshots, resetToSnapshot, verifySnapshot } from '../environment/snapshots.js';
+import { describeSyntheticData, generateSyntheticData } from '../environment/syntheticData.js';
 import { fail } from '../services/errors.js';
 
 function stringField(request: FastifyRequest, name: string): string | undefined {
@@ -11,7 +12,7 @@ function stringField(request: FastifyRequest, name: string): string | undefined 
   return value;
 }
 
-/** Environment plumbing: reset, snapshots and the app clock. The same functions back the MCP tools. */
+/** Environment plumbing: reset, snapshots, synthetic data and the app clock. The same functions back the MCP tools. */
 export async function registerAdminRoutes(app: FastifyInstance, runtime: Runtime): Promise<void> {
   app.post('/api/admin/reset', async (request) => resetToSnapshot(runtime, stringField(request, 'snapshot')));
 
@@ -26,6 +27,10 @@ export async function registerAdminRoutes(app: FastifyInstance, runtime: Runtime
   app.get<{ Params: { name: string } }>('/api/admin/snapshots/:name/verify', async (request) =>
     verifySnapshot(runtime, request.params.name),
   );
+
+  app.get('/api/admin/synthetic-data', async () => describeSyntheticData(runtime));
+
+  app.post('/api/admin/synthetic-data', async (_request, reply) => reply.code(201).send(generateSyntheticData(runtime)));
 
   app.get('/api/admin/clock', async () => describeClock(runtime));
 

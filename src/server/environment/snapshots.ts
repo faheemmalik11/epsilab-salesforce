@@ -9,6 +9,9 @@ import type { Runtime, SnapshotConfig } from './runtime.js';
 // A snapshot is a copy of that file plus its sha256; "byte-identical" means the hashes match.
 
 export const BASELINE = 'baseline';
+/** The seed alone: 21,628 leads and 9 users, with no generated records. */
+export const SEED_ONLY = 'seed-only';
+const RESERVED = /^(baseline|seed-only)(-|$)/;
 const NAME = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const SIDE_FILES = ['-journal', '-wal', '-shm'];
 
@@ -44,9 +47,14 @@ export function baselineFile(dir: string, profile: string): string {
   return path.join(dir, `baseline-${profile}.db`);
 }
 
+export function seedOnlyFile(dir: string, profile: string): string {
+  return path.join(dir, `seed-only-${profile}.db`);
+}
+
 function snapshotFile(config: SnapshotConfig, name: string): string {
   if (name === BASELINE) return baselineFile(config.dir, config.profile);
-  if (!NAME.test(name)) {
+  if (name === SEED_ONLY) return seedOnlyFile(config.dir, config.profile);
+  if (!NAME.test(name) || RESERVED.test(name)) {
     fail('INVALID_SNAPSHOT', `Snapshot names use lowercase letters, digits and dashes (max 40): "${name}"`);
   }
   return path.join(config.dir, `${name}.db`);
@@ -85,24 +93,29 @@ export function writeSnapshot(source: string, target: string): SnapshotInfo {
 }
 
 export function createSnapshot(runtime: Runtime, name: string): SnapshotInfo {
-  if (name === BASELINE) fail('INVALID_SNAPSHOT', 'The baseline snapshot is built with the image and cannot be replaced');
+  if (name === BASELINE || name === SEED_ONLY) fail('INVALID_SNAPSHOT', `The ${name} snapshot is built with the image and cannot be replaced`);
   const target = snapshotFile(runtime.snapshots, name);
   return runtime.store.swap(() => ({ ...writeSnapshot(runtime.store.file, target), name }));
 }
 
 export function listSnapshots(config: SnapshotConfig): SnapshotInfo[] {
   if (!fs.existsSync(config.dir)) return [];
-  const baseline = path.basename(baselineFile(config.dir, config.profile));
+  // The built snapshots of this SEED_PROFILE are listed under their fixed names; other profiles' are hidden.
+  const built = new Map([
+    [path.basename(baselineFile(config.dir, config.profile)), BASELINE],
+    [path.basename(seedOnlyFile(config.dir, config.profile)), SEED_ONLY],
+  ]);
+  const order = (name: string) => (name === BASELINE ? 0 : name === SEED_ONLY ? 1 : 2);
   return fs
     .readdirSync(config.dir)
     .filter((f) => f.endsWith('.db') && fs.existsSync(path.join(config.dir, `${f}.sha256`)))
-    .filter((f) => f === baseline || !f.startsWith('baseline-'))
+    .filter((f) => built.has(f) || !RESERVED.test(f))
     .map((f) => ({
-      name: f === baseline ? BASELINE : path.basename(f, '.db'),
+      name: built.get(f) ?? path.basename(f, '.db'),
       sha256: fs.readFileSync(path.join(config.dir, `${f}.sha256`), 'utf8').trim(),
       bytes: fs.statSync(path.join(config.dir, f)).size,
     }))
-    .sort((a, b) => (a.name === BASELINE ? -1 : b.name === BASELINE ? 1 : a.name.localeCompare(b.name)));
+    .sort((a, b) => order(a.name) - order(b.name) || a.name.localeCompare(b.name));
 }
 
 /**

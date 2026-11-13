@@ -8,7 +8,7 @@ import { LAYOUTS, recordName, recordTitle, type TabObject } from '../lib/layouts
 import { FieldInput, type FormValue } from './FieldInput';
 import { initialValue, toApiValue } from '../lib/formValues';
 import { Modal } from './Modal';
-import { PageError } from './PageError';
+import { FormErrorPopover, type ErrorField } from './FormErrorPopover';
 import { Section } from './Section';
 import { useToast } from './Toast';
 
@@ -110,6 +110,15 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
     />
   );
 
+  // Links in the error popover, one per field the API named; name parts share the compound "Name" label.
+  const errorFields: ErrorField[] = [];
+  for (const name of new Set((error?.errors ?? []).flatMap((e) => e.fields ?? []))) {
+    const field = fieldMap.get(name);
+    if (!field || !visible(field)) continue;
+    const fieldLabel = NAME_PARTS.includes(name) && fieldMap.has('Salutation') ? 'Name' : field.label;
+    if (!errorFields.some((f) => f.label === fieldLabel)) errorFields.push({ inputId: `field-${name}`, label: fieldLabel });
+  }
+
   const label = describe.data?.label ?? object;
   const name = editing ? recordName(record) : null;
   const title = editing ? (name ? `Edit ${name}` : `Edit ${label}`) : `New ${label}`;
@@ -121,6 +130,7 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
       dirty={dirty}
       footer={
         <>
+          <FormErrorPopover error={save.error} fields={errorFields} />
           <button type="button" className="slds-button slds-button_neutral" onClick={onClose}>
             Cancel
           </button>
@@ -152,14 +162,13 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
         </abbr>{' '}
         = Required Information
       </p>
-      <PageError error={save.error} />
       {layout.sections
         .filter((section) => section.fields.some((name) => visible(fieldMap.get(name))))
         .map((section) => (
-          <Section key={section.title} title={section.title} contentClassName="slds-grid slds-wrap slds-gutters_small">
+          <Section key={section.title} title={section.title} collapsible={false} contentClassName="record-form__fields">
               {groupNameParts(section.fields.map((name) => fieldMap.get(name)).filter(visible)).map((item) =>
                 Array.isArray(item) ? (
-                  <div key="Name" className="slds-col slds-size_1-of-2">
+                  <div key="Name">
                     <fieldset className="slds-form-element slds-form-element_compound" data-testid="field-Name-compound">
                       <legend className="slds-form-element__legend slds-form-element__label">
                         <abbr className="slds-required" title="required">
@@ -171,7 +180,7 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
                     </fieldset>
                   </div>
                 ) : (
-                  <div key={item.name} className={`slds-col ${item.type === 'textarea' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
+                  <div key={item.name}>
                     {input(item)}
                   </div>
                 ),

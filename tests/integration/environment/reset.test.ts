@@ -115,7 +115,7 @@ describe('named snapshots', () => {
     expect((await h.rest('GET', '/api/admin/snapshots/checkpoint/verify')).body).toMatchObject({ matches: true, contentMatches: true });
 
     const listed = (await tool('list_snapshots')).data.snapshots.map((s: { name: string }) => s.name);
-    expect(listed).toEqual(['baseline', 'checkpoint']);
+    expect(listed).toEqual(['baseline', 'seed-only', 'checkpoint']);
     expect((await h.rest('POST', '/api/admin/reset', {})).body.sha256).toBe(baselineSha);
   });
 

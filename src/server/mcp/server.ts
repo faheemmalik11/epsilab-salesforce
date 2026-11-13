@@ -5,6 +5,7 @@ import { OPPORTUNITY_STAGE } from '../metadata/picklists.js';
 import { createdResult, describeObject, listObjects, presentRecord, presentRecords } from '../presenters.js';
 import { describeClock, setClock, type Runtime } from '../environment/runtime.js';
 import { createSnapshot, listSnapshots, resetToSnapshot, verifySnapshot } from '../environment/snapshots.js';
+import { describeSyntheticData, generateSyntheticData } from '../environment/syntheticData.js';
 import { contextFor } from '../requestContext.js';
 import {
   convertLead,
@@ -291,7 +292,7 @@ export function createMcpServer(runtime: Runtime): McpServer {
     async ({ afterSeq, limit }) => run(runtime, undefined, (ctx) => ({ mutations: listMutations(ctx, { afterSeq, limit }) })),
   );
 
-  const snapshotName = z.string().optional().describe('Snapshot name; defaults to "baseline", the build-time data set');
+  const snapshotName = z.string().optional().describe('Snapshot name; defaults to "baseline", the build-time data set. "seed-only" is the seed with no generated records');
 
   server.registerTool(
     'reset_environment',
@@ -326,6 +327,23 @@ export function createMcpServer(runtime: Runtime): McpServer {
       inputSchema: z.object({ snapshot: snapshotName }),
     },
     async ({ snapshot }) => run(runtime, undefined, () => verifySnapshot(runtime, snapshot)),
+  );
+
+  server.registerTool(
+    'get_synthetic_data_status',
+    { description: 'Says whether the database holds generated records ("generated") or only the seed ("none").', inputSchema: z.object({}) },
+    async () => run(runtime, undefined, () => describeSyntheticData(runtime)),
+  );
+
+  server.registerTool(
+    'generate_synthetic_data',
+    {
+      description:
+        'Generates the accounts, contacts, opportunities, contact roles and tasks into a seed-only database ' +
+        '(after reset_environment with snapshot "seed-only"). Refused when generated records already exist.',
+      inputSchema: z.object({}),
+    },
+    async () => run(runtime, undefined, () => generateSyntheticData(runtime)),
   );
 
   server.registerTool(

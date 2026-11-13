@@ -1,7 +1,8 @@
 import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import path from 'node:path';
-import { baselineFile, writeSnapshot, type SnapshotInfo } from '../environment/snapshots.js';
+import { baselineFile, seedOnlyFile, writeSnapshot, type SnapshotInfo } from '../environment/snapshots.js';
+import { SYNTHETIC_DATA_KEY } from '../environment/syntheticData.js';
 import { generateData, PROFILES, type GenerateReport } from '../seed/generate.js';
 import { importSeed, type ImportReport } from '../seed/importer.js';
 import { readManifest } from '../seed/manifest.js';
@@ -70,18 +71,37 @@ export function buildDatabase(dbFile: string, seedDir: string, options: BuildOpt
   }
 }
 
+/**
+ * The seed alone (leads and users), marked so synthetic data can be generated into it later.
+ * It carries the profile and clock the generation will use, so the result equals the baseline's data.
+ */
+export function buildSeedOnlyDatabase(dbFile: string, seedDir: string, options: BuildOptions): ImportReport {
+  createEmptyDatabase(dbFile, seedDir);
+  const db = new Database(dbFile, { fileMustExist: true });
+  try {
+    const imported = importSeed(db, seedDir);
+    writeMeta(db, { seed_profile: options.profile, clock: options.clock, [SYNTHETIC_DATA_KEY]: 'none' });
+    return imported;
+  } finally {
+    db.close();
+  }
+}
+
 export interface BaselineReport extends BuildReport {
   profile: string;
   snapshot: SnapshotInfo;
+  seedOnly: SnapshotInfo;
 }
 
-/** Builds one baseline snapshot per SEED_PROFILE into `snapshotDir`. Runs at image build. */
+/** Builds a baseline and a seed-only snapshot per SEED_PROFILE into `snapshotDir`. Runs at image build. */
 export function buildBaselines(snapshotDir: string, seedDir: string, clock: string): BaselineReport[] {
   return Object.keys(PROFILES).map((profile) => {
     const temp = path.join(snapshotDir, `building-${profile}.db`);
     const report = buildDatabase(temp, seedDir, { profile, clock });
     const snapshot = writeSnapshot(temp, baselineFile(snapshotDir, profile));
+    buildSeedOnlyDatabase(temp, seedDir, { profile, clock });
+    const seedOnly = writeSnapshot(temp, seedOnlyFile(snapshotDir, profile));
     fs.rmSync(temp, { force: true });
-    return { ...report, profile, snapshot };
+    return { ...report, profile, snapshot, seedOnly };
   });
 }

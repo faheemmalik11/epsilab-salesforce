@@ -92,6 +92,17 @@ export interface ResetResult {
   removedSideFiles: string[];
 }
 
+/** Whether the database holds generated records or only the seed. */
+export interface SyntheticDataStatus {
+  status: 'none' | 'generated';
+}
+
+/** The response of POST /api/admin/synthetic-data. */
+export interface SyntheticDataResult extends SyntheticDataStatus {
+  generated: Record<string, number>;
+  durationMs: number;
+}
+
 /** The app clock; every date the GUI treats as "today" comes from here, not the browser. */
 export interface ClockInfo {
   now: string;

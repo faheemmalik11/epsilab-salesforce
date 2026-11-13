@@ -132,7 +132,7 @@ test('account, contact and opportunity pages show details, activity and related 
   expectHealthy(health);
 });
 
-test('detail and form sections collapse and expand on Lead, Contact, Account and Opportunity', async ({ page, api, health }) => {
+test('detail sections collapse and expand on Lead, Contact, Account and Opportunity', async ({ page, api, health }) => {
   const accountId = await restCreate(api, 'Account', { Name: 'Collapse Co' });
   const ids = {
     Lead: await restCreate(api, 'Lead', { LastName: 'Collapse', Company: 'Collapse Co' }),
@@ -158,12 +158,14 @@ test('detail and form sections collapse and expand on Lead, Contact, Account and
     }
   }
 
+  // The Edit dialog shows plain bands with one column of fields, as the org's dialog does.
   await page.getByTestId('edit-record').click();
-  const formSection = page.getByRole('dialog').getByTestId('section').first();
-  await formSection.locator('.slds-section__title-action').click();
-  await expect(formSection.locator('.slds-section__content')).toBeHidden();
-  await formSection.locator('.slds-section__title-action').click();
-  await expect(formSection.locator('.slds-section__content')).toBeVisible();
+  const form = page.getByRole('dialog');
+  await expect(form.getByTestId('section').first()).toBeVisible();
+  await expect(form.locator('.slds-section__title-action')).toHaveCount(0);
+  const [name, stage] = await Promise.all([form.locator('#field-Name').boundingBox(), form.locator('#field-StageName').boundingBox()]);
+  expect(name!.x).toBe(stage!.x);
+  expect(name!.width).toBe(stage!.width);
 
   expectHealthy(health);
 });

@@ -130,3 +130,37 @@ test('a failed reset shows the API error, never claims success, and leaves the a
   await api.delete(`/api/sobjects/Account/${kept}`);
   expectHealthy(health, [/400 POST .*\/api\/admin\/reset/]);
 });
+
+test('Reset to Seed Only leaves leads and users, and Generate Synthetic Data brings the rest back', async ({ page, api, health }) => {
+  const baselineAccounts = await restCount(api, 'Account');
+  expect(baselineAccounts).toBeGreaterThan(0);
+  const menu = page.getByTestId('settings-menu');
+  try {
+    await page.goto('/lightning/o/Account/list');
+    await page.getByTestId('settings-button').click();
+    // With generated data in place there is nothing to generate.
+    await expect(menu.getByTestId('generate-synthetic-data')).toHaveAttribute('aria-disabled', 'true');
+    await menu.getByTestId('reset-to-seed-only').click();
+    const reset = page.getByRole('dialog', { name: 'Reset Environment?' });
+    await expect(reset).toContainText('21,628 leads and 9 users');
+    await reset.getByTestId('reset-confirm').click();
+    await expect(page.getByTestId('toast')).toContainText('Environment reset to the seed only');
+    expect(await restCount(api, 'Account')).toBe(0);
+    expect(await restCount(api, 'Lead')).toBe(21628);
+    await page.goto('/lightning/o/Account/list');
+    await expect(page.getByTestId('list-meta')).toContainText('0 items');
+
+    await page.getByTestId('settings-button').click();
+    await expect(menu.getByTestId('generate-synthetic-data')).not.toHaveAttribute('aria-disabled', 'true');
+    await menu.getByTestId('generate-synthetic-data').click();
+    const generate = page.getByRole('dialog', { name: 'Generate Synthetic Data?' });
+    await generate.getByTestId('generate-confirm').click();
+    await expect(page.getByTestId('toast').last()).toContainText('Generated', { timeout: 30_000 });
+    expect(await restCount(api, 'Account')).toBe(baselineAccounts);
+    await page.goto('/lightning/o/Account/list');
+    await expect(page.getByTestId('list-meta')).toContainText(`${baselineAccounts.toLocaleString('en-US')} items`);
+  } finally {
+    await api.post('/api/admin/reset', { data: {} });
+  }
+  expectHealthy(health);
+});

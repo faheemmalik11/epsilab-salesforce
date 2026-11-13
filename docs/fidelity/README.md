@@ -65,6 +65,7 @@ Each row was compared against the real org at the same viewport (1854×927) and 
 | Section bands | Detail and form sections collapse and expand from their title, with one chevron that turns | `record-layout.spec.ts` |
 | Header and navigation | 592px white search pill with a #5c5c5c border; 40px bar, 32px tabs 3px apart, 12px label padding, 24px menu buttons, underline 3px below the tab. Measured in the org at 1854px | `shell.spec.ts` |
 | List meta line | "N items • Sorted by X • Filtered by All leads - Rating • Updated a few seconds ago", as the org words it | `lead-list.spec.ts` |
+| New / Edit dialog | One column inset under plain section bands; invalid fields pink (#fddde3) with a #b60554 border and icon; "We hit a snag." popover above an icon button left of Cancel, with field links. Measured in the org | `validation.spec.ts`, `record-layout.spec.ts` |
 | From the first pass | Theme tokens, buttons (hover lift, press, disabled), spinner, modal fade and blur, toast, Path colours, New / Edit modal, Convert dialog | See above |
 
 ## Surface by surface
@@ -91,7 +92,6 @@ Each row was compared against the real org at the same viewport (1854×927) and 
 | Choose Existing Contact and Opportunity are disabled stubs | Not in the brief's workflow |
 | The Tasks tab is a standard list view, not the split view | Skipped by agreement for Phase 6b |
 | Lightning shows "50+ items"; we show the exact count | AC2 needs the exact 7,111 |
-| Field labels in our detail sections follow standard Sales layouts (two columns) | The org uses a single-column Starter layout |
 | Lightning's record pages load with gray "stencil" placeholders; ours show the brand spinner | The spinner is the same component Lightning uses for list and modal loads |
 | "Recent records" in the nav menus are the most recently modified records, not the user's view history | There is no view tracking; changed records are real data |
 | The Leads list header lacks Import, Add to Campaign, Send Email and Add to an Actionable List | Out of scope; leaving them out avoids a row of stubs |

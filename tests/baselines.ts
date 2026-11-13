@@ -8,6 +8,8 @@ export const BUILD_CLOCK = '2028-11-11T09:00:00Z';
 export interface CachedBaseline extends BuildReport {
   file: string;
   sha256: string;
+  /** The seed-only snapshot built beside the baseline. */
+  seedOnlyFile: string;
 }
 
 export type CachedBaselines = Record<string, CachedBaseline>;

@@ -22,6 +22,18 @@ test('AC5a: saving a lead without required fields shows exactly the REST error',
   });
   await expect(page.getByTestId('field-error-LastName')).toHaveText('Complete this field.');
   await expect(page.getByTestId('field-error-Company')).toHaveText('Complete this field.');
+  // Lightning's footer popover: the fields are links that move focus, and the icon button reopens it.
+  const popover = page.getByTestId('page-error');
+  await expect(popover).toContainText('We hit a snag.');
+  await expect(popover.getByTestId('form-error-field')).toHaveText(['Name', 'Company']);
+  await expect(page.locator('#field-LastName')).toHaveCSS('background-color', 'rgb(253, 221, 227)');
+  await expect(page.locator('#field-LastName')).toHaveCSS('border-top-color', 'rgb(182, 5, 84)');
+  await popover.getByTestId('form-error-field').last().click();
+  await expect(page.locator('#field-Company')).toBeFocused();
+  await popover.getByRole('button', { name: 'Close error dialog' }).click();
+  await expect(popover).toHaveCount(0);
+  await page.getByTestId('form-error-toggle').click();
+  await expect(popover).toBeVisible();
   await expect(page.getByRole('dialog')).toBeVisible();
   expectHealthy(health, [/400 POST .*\/api\/sobjects\/Lead/]);
 });

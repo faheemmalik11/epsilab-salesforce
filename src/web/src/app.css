@@ -494,6 +494,15 @@ body,
 }
 
 /* Record forms */
+
+/* Measured in the org's New Lead dialog: one column of fields, inset 32px under the section band. */
+.record-form__fields {
+  padding: 0 2rem;
+}
+
+.record-form__fields > div {
+  margin-bottom: 0.5rem;
+}
 .form-legend {
   margin-bottom: 0.5rem;
   text-align: right;
@@ -1309,4 +1318,98 @@ body,
 
 .contact-roles__edit td {
   overflow: visible;
+}
+
+/* Form error popover, measured in the org: 320px, above an icon button left of Cancel. */
+.form-error {
+  position: relative;
+  display: inline-block;
+  margin-right: 0.5rem;
+  vertical-align: middle;
+}
+
+.form-error__toggle.slds-button_icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.form-error__glyph {
+  flex: none;
+  width: 1rem;
+  height: 1rem;
+  color: #b60554;
+}
+
+.form-error__toggle .form-error__glyph {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.form-error__popover {
+  position: absolute;
+  bottom: calc(100% + 1rem);
+  left: 50%;
+  width: 20rem;
+  transform: translateX(-50%);
+  border: 1px solid var(--cosmos-border);
+  border-radius: 0.5rem;
+  background: var(--cosmos-surface);
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.12), 0 7px 7px rgba(0, 0, 0, 0.12), 0 -1px 3px rgba(0, 0, 0, 0.07);
+  text-align: left;
+}
+
+.form-error__popover.slds-nubbin_bottom:before {
+  background: var(--cosmos-surface);
+}
+
+.form-error__header.slds-popover__header {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  min-height: 2.5625rem;
+  padding: 0.5rem 0.75rem;
+  border: 0;
+  border-radius: 7px 7px 0 0;
+  background: #fddde3;
+  color: #b60554;
+}
+
+.form-error__title {
+  flex: 1;
+  font-size: 1.25rem;
+  font-weight: 400;
+}
+
+.form-error__close.slds-button_icon {
+  width: 1.5rem;
+  height: 1.5rem;
+}
+
+.form-error__close .slds-button__icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  fill: #b60554;
+}
+
+.form-error__body {
+  padding: 0.75rem 0.75rem 0.75rem 2.5rem;
+  color: var(--cosmos-text-strong);
+}
+
+.form-error__body ul {
+  margin: 0.25rem 0 0.5rem 1.5rem;
+  list-style: disc;
+}
+
+.form-error__body ul:last-child {
+  margin-bottom: 0;
+}
+
+.form-error__field.slds-button {
+  height: auto;
+  padding: 0;
+  border: 0;
+  font-weight: 400;
+  line-height: inherit;
+  color: var(--cosmos-link);
 }
