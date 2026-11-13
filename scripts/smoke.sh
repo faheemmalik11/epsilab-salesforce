@@ -6,7 +6,7 @@ cd "$(dirname "$0")/.."
 IMAGE=epsilab-salesforce:latest
 # Its own compose project and host ports, so the smoke run never stops or resets a running dev stack.
 COMPOSE=(docker compose -p epsilab-smoke)
-export GUI_PORT=3300 API_PORT=8380
+export GUI_PORT=${SMOKE_GUI_PORT:-3300} API_PORT=${SMOKE_API_PORT:-8380}
 GUI=http://localhost:$GUI_PORT
 API=http://localhost:$API_PORT
 OFFLINE=epsilab-smoke-offline

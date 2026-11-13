@@ -20,6 +20,32 @@ docker compose up --build
 
 Configuration comes from environment variables (see `.env.example`): `GUI_PORT`, `API_PORT`, `SEED_PROFILE`, `CLOCK`, `CLOCK_MODE`, `DEFAULT_USER_ID`, `MCP_ALLOWED_HOSTS`.
 
+## Reproduce the core workflow (Lead to Closed Won)
+
+**In the GUI** (http://localhost:3000):
+1. **Leads** tab → **New** → enter Last Name and Company → **Save**.
+2. On the lead, click the call button in Activity (Log a Call) → **Save**: a completed Call task.
+3. On the Path, select **Working - Contacted** → **Mark as Current Status**.
+4. **Convert** → choose Create New or Choose Existing Account, keep or skip the Opportunity → **Convert**. The success screen links to the new Account, Contact and Opportunity; the lead becomes read-only.
+5. Open the Opportunity: use the Path to move through the stages (enter an Amount when asked, since stages after Qualification require one), edit **Next Step** with the pencil, add a **Contact Role** from the related list, and create a task with **New Task**.
+6. Select **Closed** on the Path → **Select Closed Stage** → Closed Won or Closed Lost.
+7. Direct path: **Accounts** → New, then **New** on its Contacts list, then **New** on its Opportunities list.
+
+**Over REST** (http://localhost:8080):
+
+```bash
+API=http://localhost:8080/api
+LEAD=$(curl -s -X POST $API/sobjects/Lead -H 'content-type: application/json' -d '{"LastName":"Lovelace","Company":"Engines Ltd"}' | jq -r .id)
+curl -s -X POST $API/tasks/log-call -H 'content-type: application/json' -d "{\"whoId\":\"$LEAD\"}"
+curl -s -X PATCH $API/sobjects/Lead/$LEAD -H 'content-type: application/json' -d '{"Status":"Working - Contacted"}'
+OPP=$(curl -s -X POST $API/leads/$LEAD/convert -H 'content-type: application/json' -d '{"convertedStatus":"Closed - Converted"}' | jq -r .opportunityId)
+curl -s -X PATCH $API/sobjects/Opportunity/$OPP -H 'content-type: application/json' -d '{"StageName":"Value Proposition","Amount":80000,"NextStep":"Demo"}'
+curl -s -X PATCH $API/sobjects/Opportunity/$OPP -H 'content-type: application/json' -d '{"StageName":"Closed Won"}'
+curl -s -X POST $API/query -H 'content-type: application/json' -d '{"object":"Lead","where":[{"field":"IsConverted","op":"eq","value":false},{"field":"Rating","op":"eq","value":"Hot"}],"orderBy":[{"field":"Company"}],"limit":1}' | jq .totalSize   # 7111
+```
+
+**Over MCP** (Streamable HTTP at http://localhost:8080/mcp): the same steps are the tools `create_record`, `log_call`, `update_record`, `convert_lead`, `update_opportunity_stage`, `add_contact_role` and `create_task`; `tools/list` lists all 21.
+
 ## GUI
 
 Salesforce Lightning Experience style at desktop width: the Salesforce Lightning Design System (SLDS 1) with the Cosmos look recreated in `src/web/src/cosmos.css`. Pick the seeded user you act as from **Acting as** in the header.
