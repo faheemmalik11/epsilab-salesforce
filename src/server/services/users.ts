@@ -1,5 +1,5 @@
 import { isValidId, toId18 } from '../db/ids.js';
-import type { Db } from '../db/connection.js';
+import { statement, type Db } from '../db/connection.js';
 import { fail } from './errors.js';
 
 export interface UserSummary {
@@ -11,8 +11,7 @@ export interface UserSummary {
 }
 
 export function listUsers(db: Db): UserSummary[] {
-  const rows = db
-    .prepare('SELECT "Id", "Name", "Alias", "Email", "IsActive" FROM "User" ORDER BY "Name" COLLATE NOCASE, "Id"')
+  const rows = statement(db, 'SELECT "Id", "Name", "Alias", "Email", "IsActive" FROM "User" ORDER BY "Name" COLLATE NOCASE, "Id"')
     .all() as (Omit<UserSummary, 'IsActive'> & { IsActive: number })[];
   return rows.map((r) => ({ ...r, IsActive: r.IsActive === 1 }));
 }
@@ -26,13 +25,12 @@ export function resolveActingUser(db: Db, requested?: string | null, defaultUser
   if (candidate) {
     if (!isValidId(candidate)) fail('MALFORMED_ID', `Acting user: id value of incorrect type: ${candidate}`);
     const id = toId18(candidate);
-    const user = db.prepare('SELECT "IsActive" FROM "User" WHERE "Id" = ?').get(id) as { IsActive: number } | undefined;
+    const user = statement(db, 'SELECT "IsActive" FROM "User" WHERE "Id" = ?').get(id) as { IsActive: number } | undefined;
     if (!user) fail('INVALID_CROSS_REFERENCE_KEY', `Acting user ${candidate} does not exist.`);
     if (user.IsActive !== 1) fail('INACTIVE_OWNER_OR_USER', `Acting user ${candidate} is inactive.`);
     return id;
   }
-  const first = db
-    .prepare('SELECT "Id" FROM "User" WHERE "IsActive" = 1 ORDER BY "Name" COLLATE NOCASE, "Id" LIMIT 1')
+  const first = statement(db, 'SELECT "Id" FROM "User" WHERE "IsActive" = 1 ORDER BY "Name" COLLATE NOCASE, "Id" LIMIT 1')
     .get() as { Id: string } | undefined;
   if (!first) fail('INVALID_CROSS_REFERENCE_KEY', 'No active user is available to act as.');
   return first.Id;

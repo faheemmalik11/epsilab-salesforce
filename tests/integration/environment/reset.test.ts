@@ -34,6 +34,11 @@ async function editEverything() {
   await h.rest('PATCH', `/api/sobjects/Lead/${seedLead.Id}`, { Rating: 'Cold' });
   const account = await h.rest('POST', '/api/sobjects/Account', { Name: 'Doomed' });
   await tool('delete_record', { object: 'Account', id: account.body.id });
+  // Generated records change too: a deal moves stage and a logged task is deleted.
+  const deal = (await h.rest('POST', '/api/query', { object: 'Opportunity', where: [{ field: 'StageName', op: 'eq', value: 'Value Proposition' }], limit: 1 })).body.records[0];
+  await tool('update_opportunity_stage', { opportunityId: deal.Id, stageName: 'Closed Won' });
+  const task = (await h.rest('POST', '/api/query', { object: 'Task', where: [{ field: 'Status', op: 'eq', value: 'Completed' }], limit: 1 })).body.records[0];
+  await h.rest('DELETE', `/api/sobjects/Task/${task.Id}`);
   return { seedLeadId: seedLead.Id as string, leadId: lead.body.id as string };
 }
 
@@ -56,6 +61,8 @@ describe('reset after edits (AC6)', () => {
 
     expect((await h.rest('GET', '/api/mutations?limit=1000')).body.mutations).toEqual([]);
     expect((await h.rest('POST', '/api/query', ALL_LEADS_HOT)).body.totalSize).toBe(7111);
+    expect(h.count('Lead')).toBe(21628);
+    expect(h.count('User')).toBe(9);
     expect((await h.rest('GET', `/api/sobjects/Lead/${seedLeadId}`)).body.Rating).toBe('Hot');
     expect((await h.rest('GET', `/api/sobjects/Lead/${leadId}`)).status).toBe(404);
     expect(sha256File(h.dbFile)).toBe(baselineSha);
@@ -66,6 +73,9 @@ describe('reset after edits (AC6)', () => {
     const reset = await tool('reset_environment');
     expect(reset.isError).toBe(false);
     expect(reset.data).toMatchObject({ snapshot: 'baseline', sha256: baselineSha, matches: true });
+    expect(reset.data.durationMs).toBeLessThan(10_000);
+    expect((await tool('get_mutation_log', { limit: 1000 })).data.mutations).toEqual([]);
+    expect([h.count('Lead'), h.count('User')]).toEqual([21628, 9]);
     const verify = await tool('verify_snapshot');
     expect(verify.data).toMatchObject({ matches: true, contentMatches: true, sideFiles: [] });
   });

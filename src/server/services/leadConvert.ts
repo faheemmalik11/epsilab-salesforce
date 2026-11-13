@@ -1,4 +1,5 @@
 import { endOfQuarter } from '../clock.js';
+import { statement } from '../db/connection.js';
 import { isValidId, toId18 } from '../db/ids.js';
 import { convertedLeadStatuses, defaultValueOf, OPPORTUNITY_STAGE } from '../metadata/picklists.js';
 import type { ServiceContext } from './context.js';
@@ -121,7 +122,7 @@ export function convertLead(ctx: ServiceContext, input: ConvertLeadInput): Conve
     let accountId: string;
     if (input.accountId) {
       const accountId18 = toId18(input.accountId);
-      if (!ctx.db.prepare('SELECT 1 FROM "Account" WHERE "Id" = ?').get(accountId18)) {
+      if (!statement(ctx.db, 'SELECT 1 FROM "Account" WHERE "Id" = ?').get(accountId18)) {
         fail('INVALID_CROSS_REFERENCE_KEY', 'Account ID: invalid cross reference id', ['accountId']);
       }
       const account = getRecord(ctx, 'Account', accountId18);

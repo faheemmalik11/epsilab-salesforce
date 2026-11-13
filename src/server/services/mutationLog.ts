@@ -1,4 +1,5 @@
 import type { ObjectName } from '../metadata/index.js';
+import { statement } from '../db/connection.js';
 import type { ServiceContext } from './context.js';
 import type { SObject } from './records/values.js';
 
@@ -23,8 +24,7 @@ export function logMutation(
   before: SObject | null,
   after: SObject | null,
 ): void {
-  ctx.db
-    .prepare(
+  statement(ctx.db, 
       `INSERT INTO mutation_log (at, actor_id, operation, object, record_id, before, after)
        VALUES (?, ?, ?, ?, ?, ?, ?)`,
     )
@@ -52,8 +52,7 @@ interface LogRow {
 
 export function listMutations(ctx: ServiceContext, options: { afterSeq?: number; limit?: number } = {}): MutationEntry[] {
   const limit = Math.min(Math.max(options.limit ?? 100, 1), 1000);
-  const rows = ctx.db
-    .prepare('SELECT * FROM mutation_log WHERE seq > ? ORDER BY seq LIMIT ?')
+  const rows = statement(ctx.db, 'SELECT * FROM mutation_log WHERE seq > ? ORDER BY seq LIMIT ?')
     .all(options.afterSeq ?? 0, limit) as LogRow[];
   return rows.map((r) => ({
     seq: r.seq,

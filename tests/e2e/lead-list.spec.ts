@@ -108,3 +108,38 @@ test('Search this list, Save & New and the row Edit action', async ({ page, api,
   for (const lead of found.records) expect((await api.delete(`/api/sobjects/Lead/${lead.Id}`)).status()).toBe(204);
   expectHealthy(health);
 });
+
+test('the other list views open, sort and page in under a second with the expanded data', async ({ page, api, health }) => {
+  const timings: Record<string, number> = {};
+  for (const [tab, object, sortField] of [
+    ['Accounts', 'Account', 'Name'],
+    ['Contacts', 'Contact', 'Title'],
+    ['Opportunities', 'Opportunity', 'Amount'],
+    ['Tasks', 'Task', 'Subject'],
+  ] as const) {
+    await page.goto('/lightning/page/home');
+    await page.waitForLoadState('networkidle');
+    const total = (await (await api.post('/api/query', { data: { object, limit: 1 } })).json()).totalSize as number;
+    expect(total, object).toBeGreaterThan(1000);
+
+    let started = Date.now();
+    await page.getByRole('link', { name: tab, exact: true }).click();
+    await expect(page.getByTestId('list-meta')).toContainText(`${total.toLocaleString('en-US')} items`);
+    timings[`open ${object}`] = Date.now() - started;
+
+    started = Date.now();
+    await page.getByTestId(`sort-${sortField}`).click();
+    await expect(page.getByTestId('list-meta')).toContainText(`Sorted by`);
+    await expect(page).toHaveURL(new RegExp(`sort=${sortField}`));
+    await expect(page.getByTestId('data-row')).toHaveCount(50);
+    timings[`sort ${object}`] = Date.now() - started;
+
+    started = Date.now();
+    await page.getByTestId('data-row').last().scrollIntoViewIfNeeded();
+    await expect(page.getByTestId('data-row')).toHaveCount(100);
+    timings[`next page ${object}`] = Date.now() - started;
+  }
+  console.log(`List timings (ms): ${JSON.stringify(timings)}`);
+  for (const [action, ms] of Object.entries(timings)) expect(ms, action).toBeLessThan(1000);
+  expectHealthy(health);
+});

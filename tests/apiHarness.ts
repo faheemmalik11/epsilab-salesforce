@@ -4,14 +4,13 @@ import path from 'node:path';
 import type { FastifyInstance } from 'fastify';
 import { Client, StreamableHTTPClientTransport } from '@modelcontextprotocol/client';
 import { buildApiApp } from '../src/server/app.js';
-import { buildDatabase } from '../src/server/db/build.js';
 import type { Db } from '../src/server/db/connection.js';
 import { createRuntime, type Runtime } from '../src/server/environment/runtime.js';
 import { baselineFile, prepareWorkingDatabase, writeSnapshot } from '../src/server/environment/snapshots.js';
 import { DbStore } from '../src/server/environment/store.js';
-import { SEED_DIR } from './helpers.js';
+import { BUILD_CLOCK as CLOCK, copyBaseline } from './baselines.js';
 
-export const CLOCK = '2028-11-11T09:00:00Z';
+export { CLOCK };
 
 export interface Harness {
   /** The current connection; it changes after a reset. */
@@ -46,7 +45,7 @@ export async function startHarness(options: { defaultUserId?: string } = {}): Pr
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'epsilab-api-'));
   const snapshotDir = path.join(dir, 'snapshots');
   const built = path.join(dir, 'built.db');
-  buildDatabase(built, SEED_DIR, { profile: 'default', clock: CLOCK });
+  copyBaseline('default', built);
   writeSnapshot(built, baselineFile(snapshotDir, 'default'));
   fs.rmSync(built);
   const dbFile = path.join(dir, 'app.db');

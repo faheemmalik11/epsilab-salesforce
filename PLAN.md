@@ -168,7 +168,7 @@ Cover both paths with a Playwright end-to-end test: Lead → Closed Won, and Acc
   - Contacts for each account
   - Opportunities across all stages, including Closed Won and Closed Lost
   - Contact roles
-  - Tasks on Contacts, Accounts and Opportunities only. **None on seed leads**, because a task would change the lead's derived `LastActivityDate`, and the seed must stay exactly as imported.
+  - Tasks on Contacts, Accounts and Opportunities. ~~None on seed leads~~ **Changed in Phase 7 at the user's request:** 1,800 seed leads get calls and follow-ups. A task never writes to the lead row (`LastActivityDate` is stored, not derived), so the seed stays exactly as imported.
   - **No leads at all.** Criterion #1 expects exactly 21,628 leads after import, and criterion #2 expects 7,111 Hot. So the generator neither adds nor converts leads. Converted-lead history appears only once someone runs the workflow.
 - Deliberate mess, which goes in the write-up:
   - Near-duplicate accounts ("Business 0BAC… Inc" vs "Business 0BAC…, Inc." vs a trailing space)

@@ -98,6 +98,8 @@ for (const width of [1280, 1440, 1920]) {
     await page.goto('/lightning/page/home');
     await expect(page.getByTestId('home-page')).toBeVisible();
     await expect(page.getByTestId('home-recent-record').first()).toBeVisible();
+    // Let Home's card queries finish, so navigating away doesn't abort them.
+    await page.waitForLoadState('networkidle');
     expect(await noHorizontalScroll(), 'home').toBe(true);
     for (const url of ['/lightning/o/Lead/list', '/lightning/o/Opportunity/list']) {
       await page.goto(url);

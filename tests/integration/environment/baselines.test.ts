@@ -5,15 +5,26 @@ import Database from 'better-sqlite3';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { buildBaselines, buildDatabase, type BaselineReport } from '../../../src/server/db/build.js';
 import { baselineFile, prepareWorkingDatabase, sha256File } from '../../../src/server/environment/snapshots.js';
+import { cachedBaseline } from '../../baselines.js';
 import { SEED_DIR } from '../../helpers.js';
 
 const CLOCK = '2028-11-11T09:00:00Z';
+/** Full builds share the CPU with the other test files, so they get more than the default 30 s. */
+const BUILD_TIMEOUT = 120_000;
 let dir: string;
 let reports: BaselineReport[];
 
 beforeAll(() => {
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'epsilab-baselines-'));
   reports = buildBaselines(path.join(dir, 'snapshots'), SEED_DIR, CLOCK);
+}, BUILD_TIMEOUT);
+
+// This file builds its own baselines (it tests building them); the rest of the suite shares the
+// cached ones from tests/globalSetup.ts, which must be identical.
+describe('the shared test baselines', () => {
+  it('are byte-identical to the ones built here', () => {
+    for (const report of reports) expect(cachedBaseline(report.profile).sha256, report.profile).toBe(report.snapshot.sha256);
+  });
 });
 afterAll(() => fs.rmSync(dir, { recursive: true, force: true }));
 
@@ -44,7 +55,7 @@ describe('baseline snapshots per SEED_PROFILE', () => {
     const independent = path.join(dir, 'independent.db');
     buildDatabase(independent, SEED_DIR, { profile: 'default', clock: CLOCK });
     expect(sha256File(independent)).toBe(reports[0]!.snapshot.sha256);
-  });
+  }, BUILD_TIMEOUT);
 
   it('rejects an unknown profile', () => {
     expect(() => buildDatabase(path.join(dir, 'x.db'), SEED_DIR, { profile: 'huge', clock: CLOCK })).toThrow(/Unknown SEED_PROFILE "huge"/);

@@ -134,7 +134,10 @@ const TASK_FILTERS: { id: TaskFilter; label: string; empty: string }[] = [
   { id: 'open', label: 'All Open Tasks', empty: 'No open tasks.' },
 ];
 
-/** The acting user's open tasks, filtered by due date in the browser since the query API compares by equality only. */
+/**
+ * The acting user's open tasks. Today's tasks are an exact match on the due date; overdue and all open
+ * read the earliest-dated tasks, since the query API compares by equality only.
+ */
 function TodaysTasks({ ownerId, today }: { ownerId?: string; today?: string }) {
   const [filter, setFilter] = useState<TaskFilter>('today');
   const queryClient = useQueryClient();
@@ -145,9 +148,10 @@ function TodaysTasks({ ownerId, today }: { ownerId?: string; today?: string }) {
       where: [
         { field: 'OwnerId', op: 'eq', value: ownerId },
         { field: 'IsClosed', op: 'eq', value: false },
+        filter === 'today' ? { field: 'ActivityDate', op: 'eq', value: today } : { field: 'ActivityDate', op: 'notNull' },
       ],
       orderBy: [{ field: 'ActivityDate' }, { field: 'Subject' }],
-      limit: 200,
+      limit: 5,
     },
     !!ownerId && !!today,
   );
@@ -160,14 +164,7 @@ function TodaysTasks({ ownerId, today }: { ownerId?: string; today?: string }) {
   });
   const current = TASK_FILTERS.find((f) => f.id === filter)!;
   const due = (task: SRecord) => (task.ActivityDate ? String(task.ActivityDate) : null);
-  const records = (tasks.data?.records ?? [])
-    .filter((task) => {
-      const date = due(task);
-      if (filter === 'today') return date === today;
-      if (filter === 'overdue') return date !== null && date < today!;
-      return true;
-    })
-    .slice(0, 5);
+  const records = (tasks.data?.records ?? []).filter((task) => filter !== 'overdue' || (due(task) ?? '') < today!);
 
   return (
     <HomeCard

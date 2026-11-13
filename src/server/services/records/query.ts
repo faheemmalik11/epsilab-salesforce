@@ -1,4 +1,5 @@
 import { getObject, type FieldDef, type ObjectDef, type ObjectName } from '../../metadata/index.js';
+import { statement } from '../../db/connection.js';
 import type { ServiceContext } from '../context.js';
 import { apiError, ServiceError, type ApiError } from '../errors.js';
 import { coerceValue, fromRow, toColumnValue, type SObject } from './values.js';
@@ -120,11 +121,10 @@ export function queryRecords(ctx: ServiceContext, options: QueryOptions): QueryR
   const lastDirection = options.orderBy?.at(-1)?.direction === 'desc' ? 'DESC' : 'ASC';
   const orderBy = `ORDER BY ${[...sorts, `"Id" ${lastDirection}`].join(', ')}`;
 
-  const { total } = ctx.db.prepare(`SELECT COUNT(*) AS total FROM "${object.name}" ${where}`).get(...params) as {
+  const { total } = statement(ctx.db, `SELECT COUNT(*) AS total FROM "${object.name}" ${where}`).get(...params) as {
     total: number;
   };
-  const rows = ctx.db
-    .prepare(`SELECT * FROM "${object.name}" ${where} ${orderBy} LIMIT ? OFFSET ?`)
+  const rows = statement(ctx.db, `SELECT * FROM "${object.name}" ${where} ${orderBy} LIMIT ? OFFSET ?`)
     .all(...params, limit, offset) as Record<string, unknown>[];
 
   return {

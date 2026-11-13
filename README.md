@@ -63,6 +63,37 @@ Shaped like the Salesforce REST API. Errors are always the Salesforce array `[{ 
 
 Query operators: `eq`, `ne`, `in`, `isNull`, `notNull`, `contains`. The All Leads view is `IsConverted eq false`.
 
+## Data
+
+**Seed (imported exactly):** 21,628 Leads (7,111 Hot) and 9 Users, from `seed/`. The import checks the sha256 hashes in `seed/manifest.json`, and nothing afterwards edits, converts or deletes a seed row.
+
+**Generated:** the rest of the org, built from the seed at image build by `src/server/seed/generate.ts`. It writes through the same service layer as the API, so every save rule holds.
+
+| Object | `default` | `small` |
+|---|---|---|
+| Accounts | 1,838 | 184 |
+| Contacts | 5,079 | 489 |
+| Opportunities | 3,513 | 343 |
+| Opportunity Contact Roles | 5,225 | 481 |
+| Tasks | 19,348 | 1,870 |
+
+`default` models a 7-rep sales team two years into working the seed leads. `small` is the same shape at a tenth of the size. Pick one with `SEED_PROFILE`; both baselines are in the image.
+
+**What's in it:**
+- **Accounts:** contractors and the businesses around them, matching the seed's trade-contractor leads. Industries, sizes, states, titles and names vary, and names come from the seed's own first and last names. 300 accounts are named after companies shared by several seed leads, so converting one of those leads finds an existing account.
+- **Opportunities:** every stage. 716 are Closed Won and 1,423 Closed Lost (a 33% win rate), and the rest are open. Sizes scale with the account, from $1,000 to about $930,000 with a median of $33,000. Each deal was created early and then moved to its current stage, so creation and modified dates, close dates and probabilities line up.
+- **Contact roles and tasks:** 85% of deals with roles have exactly one primary contact. Two years of calls, emails and meetings cover deals, contacts and accounts. 1,800 seed leads have call history, and 745 of them have an open follow-up.
+- **Owners:** workloads differ between the 7 active reps. The 2 inactive users still appear as the creators of 237 older accounts.
+
+**Realistically messy, on purpose (brief: "near-duplicate accounts, stale opportunities and missing optional fields"):**
+- 33 near-duplicate account pairs: "Acme Inc." and "Acme, Inc.", a trailing space, "and" for "&", all capitals, a dropped "LLC".
+- 269 stale opportunities: open, past their close date, and untouched for 90+ days.
+- 328 overdue open tasks.
+- Optional fields left blank at realistic rates: Website on 44% of accounts, Email on 38% of contacts, Amount on early-stage deals.
+- Seed leads at shared companies also appear as contacts, the lead/contact duplicate every org has.
+
+The same seed, profile and `CLOCK` always produce the same database, byte for byte (`89e95c53…` for `default`, `5cf56c37…` for `small` at the default clock, in the container and locally). Phone numbers use the fictional 555-01xx range, and email and web domains end in `.example`.
+
 ## Reset, snapshots and clock
 
 The image contains a baseline database per `SEED_PROFILE` (`default`, `small`), built from the seed at image build. At start-up the app copies the chosen profile's baseline to its working database; no SQL runs at start-up.

@@ -1,4 +1,5 @@
 import type { ObjectName } from '../../metadata/index.js';
+import { statement } from '../../db/connection.js';
 import { CLOSED_TASK_STATUSES, LEAD_STATUS, OPPORTUNITY_STAGE, stageOf } from '../../metadata/picklists.js';
 import type { ServiceContext } from '../context.js';
 import { fail } from '../errors.js';
@@ -11,7 +12,7 @@ const CONVERTED_STATUSES = new Set(LEAD_STATUS.values.filter((v) => v.converted)
 export const AMOUNT_REQUIRED_MESSAGE = 'Amount is required for stages after Qualification.';
 
 function idsWhere(ctx: ServiceContext, object: ObjectName, column: string, value: unknown): string[] {
-  return (ctx.db.prepare(`SELECT "Id" FROM "${object}" WHERE "${column}" = ?`).all(value) as { Id: string }[]).map(
+  return (statement(ctx.db, `SELECT "Id" FROM "${object}" WHERE "${column}" = ?`).all(value) as { Id: string }[]).map(
     (r) => r.Id,
   );
 }
@@ -87,8 +88,7 @@ const contactRoleRules: ObjectRules = {
   // An opportunity has at most one primary contact role, as in Salesforce.
   afterWrite({ ctx, saved }, ops) {
     if (!saved.IsPrimary) return;
-    const others = ctx.db
-      .prepare(
+    const others = statement(ctx.db, 
         `SELECT "Id" FROM "OpportunityContactRole" WHERE "OpportunityId" = ? AND "IsPrimary" = 1 AND "Id" <> ?`,
       )
       .all(saved.OpportunityId, saved.Id) as { Id: string }[];

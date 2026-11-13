@@ -6,5 +6,6 @@ export default defineConfig({
     testTimeout: 30_000,
     hookTimeout: 30_000,
     include: ['tests/unit/**/*.test.ts', 'tests/integration/**/*.test.ts'],
+    globalSetup: ['tests/globalSetup.ts'],
   },
 });

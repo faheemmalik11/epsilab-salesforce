@@ -37,6 +37,10 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | One shared `Menu` component for nav tabs, row actions, column menus, the list picker and record overflow | Same look, keyboard handling and closing behaviour everywhere |
 | Log a Call and New Task open a docked composer at the bottom right | That's where Lightning opens them |
 | Save & New in the New form, and an Edit row action in list views | Both are on the Lightning surfaces the brief reviews and reuse the same form and API calls |
+| Generated volume: 1,838 accounts, 5,079 contacts, 3,513 opportunities, 5,225 contact roles and 19,348 tasks (`default`) | The brief sets no numbers. That's about 260 accounts and 500 deals per rep for 7 reps over two years, next to 21,628 leads: enough for paging, sorting and reporting to matter, and it builds in under 10 seconds |
+| The generator writes through the service layer with a historical clock per record, then deletes its mutation log entries and vacuums | Every save rule holds and dates are realistic. The baseline starts with an empty log and no free pages |
+| A per-connection prepared-statement cache in the service layer | Preparing SQL was a third of the build time; it also makes API writes cheaper. Behaviour is unchanged |
+| Tests share one build of each baseline per run (`tests/globalSetup.ts`) | A build takes several seconds; tests that test building still build their own and compare hashes with the shared one |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
 ## Stubbed
@@ -83,6 +87,10 @@ Each one is recorded with its source in `docs/reference/`.
 | A converted opportunity uses the default stage (Prospecting), with CloseDate at the end of the current fiscal quarter | The close date is documented; the stage follows the documented picklist-default rule |
 | The contact role created during conversion is not primary and has no Role | Salesforce links the contact; nothing documents it as primary |
 | Lead tasks stay on the lead after conversion | Salesforce docs describe re-parenting only as a client-side best practice |
+| Generated tasks reference seed leads (calls and follow-ups on 1,800 leads), changing PLAN.md's earlier "no tasks on seed leads" | Requested for Phase 7. A task never writes to the lead row, so every seed lead stays exactly as imported |
+| `LastActivityDate` is not maintained from tasks on any object | It is stored, not derived from tasks, so seed leads keep their imported value (blank in this seed). Computing it would rewrite seed rows; recorded as a known gap |
+| Generated contact and account names reuse the seed's first and last names; company names come from word lists suited to trade contractors | "Given the seed, produces the rest": the names look like the seed's, and none are real companies (domains use `.example`) |
+| Today's Tasks on Home queries today's due date exactly, and reads the earliest-dated open tasks for Overdue and All Open | With the expanded data a rep has over 1,000 open tasks, so filtering one page in the browser missed today's tasks |
 | Salutation, Middle Name and Suffix don't copy to the Contact on conversion | The official mapping lists them for person accounts only |
 | Seed columns that are blank or custom are dropped on import (see `docs/reference/lead-seed-mapping.md`) | The brief allows dropping seed columns outside the Lead field set |
 | Seed dates without a time are stored as midnight UTC | The seed has no time component |

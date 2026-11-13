@@ -1,4 +1,4 @@
-import type { Db } from './connection.js';
+import { statement, type Db } from './connection.js';
 
 const BASE62 = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz';
 const SUFFIX_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ012345';
@@ -47,8 +47,7 @@ export function formatId(keyPrefix: string, counter: number): string {
 
 /** Returns the next ID for a key prefix. Deterministic: counters live in the database. */
 export function nextId(db: Db, keyPrefix: string): string {
-  const row = db
-    .prepare(
+  const row = statement(db, 
       `INSERT INTO id_sequence (key_prefix, last_value) VALUES (?, 1)
        ON CONFLICT (key_prefix) DO UPDATE SET last_value = last_value + 1
        RETURNING last_value`,

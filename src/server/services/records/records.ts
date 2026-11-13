@@ -1,4 +1,5 @@
 import { nextId, isValidId, toId18 } from '../../db/ids.js';
+import { statement } from '../../db/connection.js';
 import { getObject, objectForId, type FieldDef, type ObjectDef, type ObjectName } from '../../metadata/index.js';
 import type { ServiceContext } from '../context.js';
 import { apiError, fail, notFound, requiredFieldsMissing, ServiceError, type ApiError } from '../errors.js';
@@ -35,13 +36,13 @@ function ruleOps(ctx: ServiceContext): RuleOps {
 export function getRecord(ctx: ServiceContext, objectName: ObjectName, id: string): SObject {
   const object = getObject(objectName);
   const recordId = parseRecordId(object, id);
-  const row = ctx.db.prepare(`SELECT * FROM "${object.name}" WHERE "Id" = ?`).get(recordId);
+  const row = statement(ctx.db, `SELECT * FROM "${object.name}" WHERE "Id" = ?`).get(recordId);
   if (!row) notFound();
   return fromRow(object, row as Record<string, unknown>);
 }
 
 function findRecord(ctx: ServiceContext, object: ObjectDef, id: string): SObject | null {
-  const row = ctx.db.prepare(`SELECT * FROM "${object.name}" WHERE "Id" = ?`).get(id);
+  const row = statement(ctx.db, `SELECT * FROM "${object.name}" WHERE "Id" = ?`).get(id);
   return row ? fromRow(object, row as Record<string, unknown>) : null;
 }
 
@@ -117,7 +118,7 @@ function checkReference(
   const exists =
     target !== undefined &&
     field.referenceTo!.includes(target.name) &&
-    ctx.db.prepare(`SELECT 1 FROM "${target.name}" WHERE "Id" = ?`).get(id18) !== undefined;
+    statement(ctx.db, `SELECT 1 FROM "${target.name}" WHERE "Id" = ?`).get(id18) !== undefined;
   if (!exists) {
     errors.push(apiError('INVALID_CROSS_REFERENCE_KEY', `${field.label}: invalid cross reference id`, [field.name]));
   }
@@ -133,7 +134,7 @@ function checkReferences(ctx: ServiceContext, object: ObjectDef, values: SObject
 
 function checkOwnerActive(ctx: ServiceContext, object: ObjectDef, ownerId: FieldValue, errors: ApiError[]): void {
   if (typeof ownerId !== 'string') return;
-  const user = ctx.db.prepare('SELECT "IsActive" FROM "User" WHERE "Id" = ?').get(ownerId) as
+  const user = statement(ctx.db, 'SELECT "IsActive" FROM "User" WHERE "Id" = ?').get(ownerId) as
     | { IsActive: number }
     | undefined;
   if (user && user.IsActive !== 1) {
@@ -162,8 +163,7 @@ function insertRow(ctx: ServiceContext, object: ObjectDef, record: SObject): voi
   const fields = object.fields.filter((f) => f.name in record);
   const columns = fields.map((f) => `"${f.name}"`).join(', ');
   const placeholders = fields.map(() => '?').join(', ');
-  ctx.db
-    .prepare(`INSERT INTO "${object.name}" (${columns}) VALUES (${placeholders})`)
+  statement(ctx.db, `INSERT INTO "${object.name}" (${columns}) VALUES (${placeholders})`)
     .run(...fields.map((f) => toColumnValue(f, record[f.name] ?? null)));
 }
 
@@ -171,8 +171,7 @@ function updateRow(ctx: ServiceContext, object: ObjectDef, id: string, changes: 
   const fields = object.fields.filter((f) => f.name in changes);
   if (fields.length === 0) return;
   const assignments = fields.map((f) => `"${f.name}" = ?`).join(', ');
-  ctx.db
-    .prepare(`UPDATE "${object.name}" SET ${assignments} WHERE "Id" = ?`)
+  statement(ctx.db, `UPDATE "${object.name}" SET ${assignments} WHERE "Id" = ?`)
     .run(...fields.map((f) => toColumnValue(f, changes[f.name] ?? null)), id);
 }
 
@@ -293,6 +292,6 @@ function deleteCascade(ctx: ServiceContext, object: ObjectDef, id: string): void
       if (findRecord(ctx, child, childId)) deleteCascade(ctx, child, childId);
     }
   }
-  ctx.db.prepare(`DELETE FROM "${object.name}" WHERE "Id" = ?`).run(id);
+  statement(ctx.db, `DELETE FROM "${object.name}" WHERE "Id" = ?`).run(id);
   logMutation(ctx, 'delete', object.name, id, record, null);
 }

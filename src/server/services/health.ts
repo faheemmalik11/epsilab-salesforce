@@ -1,4 +1,4 @@
-import type { Db } from '../db/connection.js';
+import { statement, type Db } from '../db/connection.js';
 
 export interface HealthStatus {
   status: 'ok';
@@ -9,9 +9,9 @@ export interface HealthStatus {
 }
 
 export function getHealth(db: Db): HealthStatus {
-  const rows = db.prepare('SELECT key, value FROM meta').all() as { key: string; value: string }[];
+  const rows = statement(db, 'SELECT key, value FROM meta').all() as { key: string; value: string }[];
   const meta = new Map(rows.map((r) => [r.key, r.value]));
-  const { version } = db.prepare('SELECT sqlite_version() AS version').get() as { version: string };
+  const { version } = statement(db, 'SELECT sqlite_version() AS version').get() as { version: string };
   return {
     status: 'ok',
     fixture: meta.get('fixture') ?? 'unknown',

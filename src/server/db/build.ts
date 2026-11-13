@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import Database from 'better-sqlite3';
 import path from 'node:path';
 import { baselineFile, writeSnapshot, type SnapshotInfo } from '../environment/snapshots.js';
-import { generateMinimal, PROFILES, type GenerateReport } from '../seed/generate.js';
+import { generateData, PROFILES, type GenerateReport } from '../seed/generate.js';
 import { importSeed, type ImportReport } from '../seed/importer.js';
 import { readManifest } from '../seed/manifest.js';
 import { createSchema } from './schema.js';
@@ -58,7 +58,7 @@ export function buildDatabase(dbFile: string, seedDir: string, options: BuildOpt
   const db = new Database(dbFile, { fileMustExist: true });
   try {
     const imported = importSeed(db, seedDir);
-    const generated = generateMinimal(db, options);
+    const generated = generateData(db, options);
     writeMeta(db, { seed_profile: options.profile, clock: options.clock });
     return { import: imported, generated };
   } catch (error) {

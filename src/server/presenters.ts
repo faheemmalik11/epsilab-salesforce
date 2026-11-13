@@ -1,4 +1,4 @@
-import type { Db } from './db/connection.js';
+import { statement, type Db } from './db/connection.js';
 import { getObject, objectForId, OBJECTS, type ObjectDef, type ObjectName } from './metadata/index.js';
 import type { SObject } from './services/index.js';
 
@@ -34,8 +34,7 @@ function lookupNames(db: Db, ids: Set<string>): Map<string, RelatedRecord> {
   const found = new Map<string, RelatedRecord>();
   for (const [object, list] of byObject) {
     const column = NAME_COLUMN[object] ?? 'Name';
-    const rows = db
-      .prepare(`SELECT "Id", "${column}" AS name FROM "${object}" WHERE "Id" IN (${list.map(() => '?').join(', ')})`)
+    const rows = statement(db, `SELECT "Id", "${column}" AS name FROM "${object}" WHERE "Id" IN (${list.map(() => '?').join(', ')})`)
       .all(...list) as { Id: string; name: string | null }[];
     for (const row of rows) {
       found.set(row.Id, { attributes: { type: object, url: `/api/sobjects/${object}/${row.Id}` }, Id: row.Id, Name: row.name });

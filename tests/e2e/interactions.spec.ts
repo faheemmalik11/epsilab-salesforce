@@ -206,7 +206,7 @@ test('record inline edit, header actions, docked composer and delete', async ({ 
 test("Seller Home task filters, and completing a task from Today's Tasks", async ({ page, api, health }) => {
   const clock = await (await api.get('/api/admin/clock')).json();
   const today = await restCreate(api, 'Task', { Subject: 'Home due today', ActivityDate: clock.today });
-  const overdue = await restCreate(api, 'Task', { Subject: 'Home overdue', ActivityDate: '2028-01-05' });
+  const overdue = await restCreate(api, 'Task', { Subject: 'Home overdue', ActivityDate: '2026-01-05' });
   try {
     await page.goto('/lightning/page/home');
     const card = page.getByTestId('home-todays-tasks');

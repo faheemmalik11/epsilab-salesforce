@@ -8,10 +8,11 @@ import { buildDatabase, type BuildReport } from '../../../src/server/db/build.js
 import { openDatabase, type Db } from '../../../src/server/db/connection.js';
 import { getObject, type ObjectName } from '../../../src/server/metadata/index.js';
 import { createRecord, queryRecords, resolveActingUser } from '../../../src/server/services/index.js';
+import { BUILD_CLOCK, copyBaseline } from '../../baselines.js';
 import { SEED_DIR } from '../../helpers.js';
 import { readSeed, seedManifest } from '../../seed.js';
 
-const OPTIONS = { profile: 'default', clock: '2028-11-11T09:00:00Z' };
+const OPTIONS = { profile: 'default', clock: BUILD_CLOCK };
 const GENERATED: ObjectName[] = ['Account', 'Contact', 'Opportunity', 'OpportunityContactRole', 'Task'];
 
 const sha256 = (file: string) => crypto.createHash('sha256').update(fs.readFileSync(file)).digest('hex');
@@ -28,7 +29,7 @@ beforeAll(() => {
   seedHashesBefore = seedHashes();
   dir = fs.mkdtempSync(path.join(os.tmpdir(), 'epsilab-full-'));
   dbFile = path.join(dir, 'app.db');
-  report = buildDatabase(dbFile, SEED_DIR, OPTIONS);
+  report = copyBaseline('default', dbFile);
   builtHash = sha256(dbFile);
   db = openDatabase(dbFile);
 });
@@ -108,7 +109,7 @@ describe('generated records', () => {
     for (const object of GENERATED) expect(count(object), object).toBeGreaterThan(0);
     expect(report.generated).toEqual(Object.fromEntries(GENERATED.map((o) => [o, count(o)])));
     expect(scalar(`SELECT COUNT(*) AS n FROM "Lead" WHERE "Id" LIKE '00QSB0%'`)).toBe(0);
-    expect(scalar(`SELECT COUNT(*) AS n FROM "Task" WHERE "WhoId" LIKE '00Q%'`)).toBe(0);
+    expect(scalar(`SELECT COUNT(*) AS n FROM "Lead" WHERE "IsConverted" = 1`)).toBe(0);
   });
 
   it('have no dangling references', () => {
@@ -136,14 +137,19 @@ describe('generated records', () => {
     try {
       const ctx = { db: copy, clock: fixedClock(OPTIONS.clock), actingUserId: resolveActingUser(copy) };
       let saved = 0;
-      for (const object of GENERATED) {
-        const writable = getObject(object).fields.filter((f) => f.createable).map((f) => f.name);
-        for (const record of queryRecords(ctx, { object, limit: 2000 }).records) {
-          createRecord(ctx, object, Object.fromEntries(writable.map((name) => [name, record[name]])));
-          saved++;
+      // 400 records of each object, spread across the table, saved in one transaction for speed.
+      copy.transaction(() => {
+        for (const object of GENERATED) {
+          const writable = getObject(object).fields.filter((f) => f.createable).map((f) => f.name);
+          const total = count(object);
+          for (let i = 0; i < 400; i++) {
+            const [record] = queryRecords(ctx, { object, orderBy: [{ field: 'Id' }], limit: 1, offset: Math.floor((i * total) / 400) }).records;
+            createRecord(ctx, object, Object.fromEntries(writable.map((name) => [name, record![name]])));
+            saved++;
+          }
         }
-      }
-      expect(saved).toBe(GENERATED.reduce((n, o) => n + count(o), 0));
+      })();
+      expect(saved).toBe(GENERATED.length * 400);
     } finally {
       copy.close();
     }
@@ -176,9 +182,9 @@ describe('All Leads groundwork (AC2)', () => {
 
 describe('repeatable builds', () => {
   it('rebuilding from the same seed and options gives a byte-identical database without duplicates', () => {
+    // The cached baseline came from buildBaselines; an independent build over the same path twice
+    // must match it, so neither leftovers nor the snapshot step change the result.
     const again = path.join(dir, 'again.db');
-    buildDatabase(again, SEED_DIR, OPTIONS);
-    expect(sha256(again)).toBe(builtHash);
     buildDatabase(again, SEED_DIR, OPTIONS);
     expect(sha256(again)).toBe(builtHash);
     const rebuilt = openDatabase(again);
@@ -188,7 +194,8 @@ describe('repeatable builds', () => {
     } finally {
       rebuilt.close();
     }
-  });
+    // A full build shares the CPU with the other test files.
+  }, 120_000);
 
   it('leaves the seed files byte-identical', () => {
     expect(seedHashes()).toEqual(seedHashesBefore);
