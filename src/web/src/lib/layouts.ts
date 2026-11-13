@@ -221,6 +221,7 @@ export function recordName(record: Record<string, unknown>): string | null {
 }
 
 /** The text that names a record: Subject for tasks, Name for everything else. */
+/** A record's display name. Seed leads can lack one; they read "(no name)" as in the list views, never a raw Id. */
 export function recordTitle(record: Record<string, unknown>): string {
-  return String(record.Name ?? record.Subject ?? record.Id ?? '');
+  return String(record.Name ?? record.Subject ?? '(no name)');
 }

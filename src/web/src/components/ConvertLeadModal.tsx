@@ -6,7 +6,7 @@ import { useDescribe, useRecordQuery, refreshRecords } from '../api/hooks';
 import type { ConvertResult, SRecord } from '../api/types';
 import { useActingUser } from '../context/ActingUser';
 import { recordUrl } from './FieldOutput';
-import { Icon } from './Icon';
+import { ButtonIcon, Icon } from './Icon';
 import { Lookup, type LookupValue } from './Lookup';
 import { Modal } from './Modal';
 import { PageError } from './PageError';
@@ -37,14 +37,24 @@ function UnsupportedChoice({ id, name, label, feature }: { id: string; name: str
   );
 }
 
-/** One Convert Lead row: the object, "Create New" on the left, "- OR -", and "Choose Existing" on the right. */
-function ConvertRow({ title, left, right }: { title: string; left: ReactNode; right: ReactNode }) {
+/**
+ * One Convert Lead row: the object, "Create New" on the left, "- OR -", and "Choose Existing" on the right.
+ * The chevron expands the row to its full form or collapses it to a summary, as in Lightning, where
+ * Account opens expanded and Contact and Opportunity collapsed.
+ */
+function ConvertRow({ title, defaultOpen = false, left, right }: { title: string; defaultOpen?: boolean; left(open: boolean): ReactNode; right(open: boolean): ReactNode }) {
+  const [open, setOpen] = useState(defaultOpen);
   return (
-    <div className="convert-row" data-testid={`convert-row-${title}`}>
-      <h2 className="convert-row__title">{title}</h2>
-      <div className="convert-row__side">{left}</div>
+    <div className={`convert-row ${open ? 'convert-row_open' : ''}`} data-testid={`convert-row-${title}`}>
+      <h2 className="convert-row__title">
+        <button type="button" className="slds-button convert-row__toggle" aria-expanded={open} data-testid={`convert-toggle-${title}`} onClick={() => setOpen(!open)}>
+          <ButtonIcon name="chevrondown" />
+          {title}
+        </button>
+      </h2>
+      <div className="convert-row__side">{left(open)}</div>
       <div className="convert-row__or">- OR -</div>
-      <div className="convert-row__side">{right}</div>
+      <div className="convert-row__side">{right(open)}</div>
     </div>
   );
 }
@@ -145,6 +155,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
   return (
     <Modal
       title="Convert Lead"
+      size="large"
       onClose={onClose}
       footer={
         <>
@@ -170,10 +181,11 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
 
       <ConvertRow
         title="Account"
-        left={
+        defaultOpen
+        left={(open) => (
           <>
             <Radio id="account-new" name="account" label="Create New Account" checked={accountMode === 'new'} onChange={() => setAccountMode('new')} />
-            <div className="convert-box">
+            <div className={open ? 'convert-box' : 'convert-box convert-box_summary'}>
               <span className="slds-form-element__label">
                 {accountMode === 'new' && (
                   <abbr className="slds-required" title="required" data-testid="account-name-required">
@@ -188,8 +200,8 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
               </p>
             </div>
           </>
-        }
-        right={
+        )}
+        right={(open) => (
           <>
             <Radio
               id="account-existing"
@@ -207,13 +219,13 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
                 )}
                 Account Search
               </label>
-              <Lookup id="convert-account" targets={['Account']} value={account} onChange={chooseAccount} invalid={searchError} />
+              <Lookup id="convert-account" targets={['Account']} value={account} onChange={chooseAccount} invalid={searchError} placeholder="Search for matching accounts" />
               {searchError && (
                 <div className="slds-form-element__help" data-testid="field-error-convert-account">
                   Complete this field.
                 </div>
               )}
-              <div className="convert-matches" data-testid="account-matches">
+              <div className="convert-matches" data-testid="account-matches" hidden={!open}>
                 <p className="slds-text-color_weak">
                   {matches.data ? `${formatNumber(matches.data.totalSize)} Account Match${matches.data.totalSize === 1 ? '' : 'es'}` : 'Searching…'}
                 </p>
@@ -230,26 +242,35 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
               </div>
             </div>
           </>
-        }
+        )}
       />
 
       <ConvertRow
         title="Contact"
-        left={
+        left={(open) => (
           <>
             <Radio id="contact-new" name="contact" label="Create New Contact" checked />
             {contactName ? (
-              <span className="convert-pill" data-testid="convert-contact-name">
-                {contactName}
-              </span>
+              open ? (
+                <div className="convert-box">
+                  <span className="slds-form-element__label">Name</span>
+                  <p className="convert-static" data-testid="convert-contact-name" title="The new contact takes the lead's name">
+                    {contactName}
+                  </p>
+                </div>
+              ) : (
+                <span className="convert-pill" data-testid="convert-contact-name">
+                  {contactName}
+                </span>
+              )
             ) : (
               <p className="convert-static convert-static_empty" data-testid="convert-contact-name">
                 This lead has no last name. Add one to the lead before converting.
               </p>
             )}
           </>
-        }
-        right={
+        )}
+        right={() => (
           <>
             <UnsupportedChoice
               id="contact-existing"
@@ -258,22 +279,29 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
               feature="Converting into an existing contact"
             />
           </>
-        }
+        )}
       />
 
       <ConvertRow
         title="Opportunity"
-        left={
+        left={(open) => (
           <>
             <Radio id="opportunity-new" name="opportunity" label="Create New Opportunity" checked={!noOpportunity} onChange={() => setNoOpportunity(false)} />
-            <input
-              id="convert-opportunity-name"
-              aria-label="Opportunity Name"
-              className="slds-input convert-pill-input"
-              value={opportunityName}
-              disabled={noOpportunity}
-              onChange={(e) => setOpportunityName(e.target.value)}
-            />
+            <div className={open ? 'convert-box' : 'convert-box convert-box_summary'}>
+              {open && (
+                <label className="slds-form-element__label" htmlFor="convert-opportunity-name">
+                  Opportunity Name
+                </label>
+              )}
+              <input
+                id="convert-opportunity-name"
+                aria-label="Opportunity Name"
+                className={`slds-input ${open ? '' : 'convert-pill-input'}`}
+                value={opportunityName}
+                disabled={noOpportunity}
+                onChange={(e) => setOpportunityName(e.target.value)}
+              />
+            </div>
             <div className="slds-checkbox convert-no-opportunity">
               <input type="checkbox" id="convert-no-opportunity" checked={noOpportunity} onChange={(e) => setNoOpportunity(e.target.checked)} />
               <label className="slds-checkbox__label" htmlFor="convert-no-opportunity">
@@ -282,8 +310,8 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
               </label>
             </div>
           </>
-        }
-        right={
+        )}
+        right={() => (
           <>
             <UnsupportedChoice
               id="opportunity-existing"
@@ -292,7 +320,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
               feature="Converting into an existing opportunity"
             />
           </>
-        }
+        )}
       />
 
       <div className="convert-footer-fields">

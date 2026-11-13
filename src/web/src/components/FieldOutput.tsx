@@ -23,6 +23,11 @@ export function FieldOutput({ field, record }: { field: FieldDescribe; record: R
       </span>
     );
   }
+  // Lightning shows emails and phone numbers as links that open the mail or phone app.
+  if ((field.type === 'email' || field.type === 'phone') && record[field.name]) {
+    const value = String(record[field.name]);
+    return <a href={field.type === 'email' ? `mailto:${value}` : `tel:${value.replace(/[^\d+]/g, '')}`}>{value}</a>;
+  }
   if (field.type === 'url' && record[field.name]) {
     return (
       <a href={String(record[field.name])} target="_blank" rel="noreferrer">

@@ -26,7 +26,7 @@ Trial picklist, in path order. All seed values are kept verbatim:
 | 12 | Closed - Not Converted | SF default | no | |
 | 13 | Closed - Converted | brief + SF default | **yes** | The only converted status. Shown in the Convert dialog, never on the Path |
 
-[DECISION] The Lead **Path** shows the open stages 1, 3 and 12, plus a final "Converted" step. A lead whose seed status isn't on the Path, such as Prospecting, shows that value in the highlights panel and the status field. The Path then highlights no step until the user picks one, which mirrors how Lightning renders a value that isn't on the Path. Ordering seed-only values is a [DECISION]; the seed carries no sort order.
+[DECISION] The Lead **Path** shows the open stages 1, 2, 3 and 12, plus a final "Converted" step. Prospecting is on it because 20,728 of the 21,628 seed leads have that status. A lead with one of the rarer seed statuses (4 to 11) gets that status added at its picklist position, so the Path always marks a current step, as Lightning's does: its Path lists every status value. Ordering seed-only values is a [DECISION]; the seed carries no sort order.
 
 ## Lead Rating: [SF-DOC] default
 

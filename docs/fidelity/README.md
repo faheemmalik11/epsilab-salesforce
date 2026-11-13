@@ -66,6 +66,9 @@ Each row was compared against the real org at the same viewport (1854×927) and 
 | Header and navigation | 592px white search pill with a #5c5c5c border; 40px bar, 32px tabs 3px apart, 12px label padding, 24px menu buttons, underline 3px below the tab. Measured in the org at 1854px | `shell.spec.ts` |
 | List meta line | "N items • Sorted by X • Filtered by All leads - Rating • Updated a few seconds ago", as the org words it | `lead-list.spec.ts` |
 | New / Edit dialog | One column inset under plain section bands; invalid fields pink (#fddde3) with a #b60554 border and icon; "We hit a snag." popover above an icon button left of Cancel, with field links. Measured in the org | `validation.spec.ts`, `record-layout.spec.ts` |
+| Empty lists | A centred message under the column headers with an Add button; the org's wording for Accounts and Opportunities, "No items to display." when a filter or search matches nothing | `lead-list.spec.ts` |
+| Lead record | Path always marks the current status; 48px rows with 13px values; email and phone as links | Measured in the org |
+| Convert Lead | 1024px dialog with a 24px title; rows collapse and expand from a chevron, Account open and Contact and Opportunity collapsed to pills | Measured in the org |
 | From the first pass | Theme tokens, buttons (hover lift, press, disabled), spinner, modal fade and blur, toast, Path colours, New / Edit modal, Convert dialog | See above |
 
 ## Surface by surface

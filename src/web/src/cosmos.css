@@ -598,6 +598,20 @@ a {
   max-width: calc(100% - 4rem);
 }
 
+/* Measured on the org's Convert Lead dialog: 1024px wide, a 24px title and no line under the header. */
+.slds-modal_large .slds-modal__container {
+  width: 64rem;
+  max-width: calc(100% - 4rem);
+}
+
+.slds-modal_large .slds-modal__header {
+  border-bottom: 0;
+}
+
+.slds-modal_large .slds-modal__title {
+  font-size: 1.5rem;
+}
+
 .slds-modal__header {
   position: relative;
   border-radius: var(--cosmos-radius-card) var(--cosmos-radius-card) 0 0;

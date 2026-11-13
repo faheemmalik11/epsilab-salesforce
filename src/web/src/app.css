@@ -118,6 +118,29 @@ body,
   min-width: 0;
 }
 
+/* An empty list: its message centred in the space under the column headers. */
+.list-empty {
+  position: sticky;
+  left: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  min-height: calc(100% - 5rem);
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.list-empty__title {
+  font-size: 1.25rem;
+  color: var(--cosmos-text-strong);
+}
+
+.list-empty__text {
+  color: var(--cosmos-text-weak);
+}
+
 .slds-table .cell-number {
   width: 2.5rem;
   font-size: 0.75rem;
@@ -614,7 +637,10 @@ body,
   border-bottom-color: var(--cosmos-border);
 }
 
+/* Measured in the org: 48px rows with a 13px value on a 19.5px line. */
 .detail-row .slds-form-element__static {
+  font-size: 0.8125rem;
+  line-height: 1.5;
   color: var(--cosmos-text-value);
 }
 
@@ -639,7 +665,7 @@ body,
 /* Convert Lead */
 .convert-row {
   display: grid;
-  grid-template-columns: 7rem minmax(0, 1fr) 4.5rem minmax(0, 1.2fr);
+  grid-template-columns: 8rem minmax(0, 1fr) 4.5rem minmax(0, 1.2fr);
   gap: 0 0.5rem;
   padding: 0.75rem 0.75rem 1rem;
   margin: 0 -1rem;
@@ -650,6 +676,53 @@ body,
 .convert-row__title {
   font-size: 1rem;
   color: var(--cosmos-text);
+}
+
+.convert-row__toggle.slds-button {
+  gap: 0.5rem;
+  height: auto;
+  padding: 0;
+  border: 0;
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1.25;
+  color: var(--cosmos-text);
+}
+
+.convert-row__toggle .slds-button__icon {
+  width: 0.75rem;
+  height: 0.75rem;
+  fill: var(--cosmos-text);
+  transform: rotate(-90deg);
+}
+
+.convert-row__toggle[aria-expanded='true'] .slds-button__icon {
+  transform: none;
+}
+
+/* A collapsed row keeps its value as a pill, without the boxed form. */
+.convert-box.convert-box_summary {
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.convert-box_summary .slds-form-element__label {
+  display: none;
+}
+
+.convert-box_summary .convert-static {
+  padding: 0.25rem 0.75rem;
+  border: 1px solid var(--cosmos-border-strong);
+  border-radius: var(--cosmos-radius-pill);
+  background: var(--cosmos-surface);
+  color: var(--cosmos-brand-dark);
+  font-size: 0.8125rem;
+  font-weight: 600;
+}
+
+.convert-matches[hidden] {
+  display: none;
 }
 
 .convert-row__or {
@@ -716,9 +789,11 @@ body,
   margin-right: 0.5rem;
 }
 
-.convert-no-opportunity .slds-form-element__label {
-  font-size: 0.75rem;
+.convert-no-opportunity .slds-checkbox__label .slds-form-element__label {
+  font-size: 0.6875rem;
   font-weight: 400;
+  color: var(--cosmos-text-weak);
+  white-space: nowrap;
 }
 
 .convert-footer-fields {

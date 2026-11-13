@@ -97,6 +97,11 @@ test('the list view picker switches to My Leads and marks unsupported views as s
   await menu.getByText('My Leads').click();
   await expect(page.getByTestId('list-view-name')).toHaveText('My Leads');
   await expect(page.getByTestId('list-meta')).toContainText('0 items');
+  // An empty list says so in the middle of the table area and offers to add a record.
+  await expect(page.getByTestId('list-empty')).toContainText('No leads to show');
+  await expect(page.getByTestId('list-empty-new')).toHaveText('Add a Lead');
+  await page.goto('/lightning/o/Lead/list?q=zzzz-no-such-lead');
+  await expect(page.getByTestId('list-empty')).toHaveText('No items to display.');
   expectHealthy(health);
 });
 

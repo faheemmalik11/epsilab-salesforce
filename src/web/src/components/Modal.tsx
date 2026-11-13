@@ -6,6 +6,7 @@ interface ModalProps {
   onClose(): void;
   children: ReactNode;
   footer?: ReactNode;
+  /** Large is the 1024px Convert Lead dialog. */
   size?: 'small' | 'medium' | 'large';
   /** Unsaved changes: closing asks to discard them first. */
   dirty?: boolean;

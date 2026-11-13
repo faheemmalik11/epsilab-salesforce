@@ -195,6 +195,12 @@ function FilterPanel({
 
 const STUB_VIEWS = ['Recently Viewed', 'All Open'];
 
+/** Lightning's empty list wording, where it was seen in the org; other objects get a plain line. */
+const EMPTY_LISTS: Partial<Record<TabObject, { title: string; text: string }>> = {
+  Account: { title: 'Accounts show where your contacts work', text: 'Improve your reporting and deal tracking with accounts.' },
+  Opportunity: { title: 'Opportunities are knocking', text: 'Track in progress deals so you and your team can collaborate and win.' },
+};
+
 export function ListPage({ object }: { object: TabObject }) {
   const layout = LAYOUTS[object];
   const describe = useDescribe(object);
@@ -526,6 +532,21 @@ export function ListPage({ object }: { object: TabObject }) {
             }
             onEndReached={loadMore}
           />
+          {total === 0 && !list.isFetching && (
+            <div className="list-empty" data-testid="list-empty">
+              {filters.length > 0 || search ? (
+                <p className="list-empty__title">No items to display.</p>
+              ) : (
+                <>
+                  <p className="list-empty__title">{EMPTY_LISTS[object]?.title ?? `No ${plural.toLowerCase()} to show`}</p>
+                  <p className="list-empty__text">{EMPTY_LISTS[object]?.text ?? `${plural} you can see appear here.`}</p>
+                  <button type="button" className="slds-button slds-button_brand" data-testid="list-empty-new" onClick={() => setCreating(true)}>
+                    Add {/^[AEIOU]/.test(describe.data?.label ?? '') ? 'an' : 'a'} {describe.data?.label ?? object}
+                  </button>
+                </>
+              )}
+            </div>
+          )}
           {isFetchingNextPage && <Spinner size="small" />}
           {list.isFetching && !isFetchingNextPage && <Spinner overlay />}
         </div>

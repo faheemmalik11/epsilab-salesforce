@@ -24,8 +24,11 @@ import { formatValue } from '../lib/format';
 import { LAYOUTS, layoutFor, recordTitle, type Layout, type RelatedList, type TabObject } from '../lib/layouts';
 import { Spinner } from '../components/Spinner';
 
-/** Lead path steps (docs/reference/picklists.md): the working statuses, then conversion. */
-const LEAD_PATH = ['Open - Not Contacted', 'Working - Contacted', 'Closed - Not Converted'];
+/**
+ * Lead path steps (docs/reference/picklists.md): the working statuses, then conversion. A lead whose
+ * status is one of the rarer seed values gets that value too, so the Path always has a current step.
+ */
+const LEAD_PATH = ['Open - Not Contacted', 'Prospecting', 'Working - Contacted', 'Closed - Not Converted'];
 const CONVERTED_STEP = '__converted';
 const CLOSED_STEP = '__closed';
 
@@ -41,11 +44,14 @@ function useStatusUpdate(record: SRecord, field: 'Status' | 'StageName') {
   });
 }
 
-function LeadPath({ lead, onConvert }: { lead: SRecord; onConvert(): void }) {
+function LeadPath({ lead, statuses, onConvert }: { lead: SRecord; statuses: FieldDescribe | undefined; onConvert(): void }) {
   const update = useStatusUpdate(lead, 'Status');
-  const steps: PathStep[] = [...LEAD_PATH.map((value) => ({ value, label: value })), { value: CONVERTED_STEP, label: 'Converted' }];
   const status = String(lead.Status);
-  const currentIndex = LEAD_PATH.indexOf(status);
+  // Picklist order, so an added status sits where Lightning's Path would show it.
+  const order = (statuses?.picklistValues ?? []).map((v) => v.value);
+  const shown = LEAD_PATH.includes(status) ? LEAD_PATH : [...LEAD_PATH, status].sort((a, b) => order.indexOf(a) - order.indexOf(b));
+  const steps: PathStep[] = [...shown.map((value) => ({ value, label: value })), { value: CONVERTED_STEP, label: 'Converted' }];
+  const currentIndex = shown.indexOf(status);
   return (
     <>
       <PageError error={update.error} />
@@ -470,7 +476,7 @@ export function RecordPage() {
 
       {hasPath && (
         <div className="record-panel record-panel_path">
-          {object === 'Lead' && !converted && <LeadPath lead={data} onConvert={() => setConverting(true)} />}
+          {object === 'Lead' && !converted && <LeadPath lead={data} statuses={fields.get('Status')} onConvert={() => setConverting(true)} />}
           {object === 'Opportunity' && stageField && <OpportunityPath opportunity={data} stages={stageField} />}
         </div>
       )}

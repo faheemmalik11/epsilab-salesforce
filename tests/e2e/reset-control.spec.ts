@@ -147,6 +147,8 @@ test('Reset to Seed Only leaves leads and users, and Generate Synthetic Data bri
     await expect(page.getByTestId('toast')).toContainText('Environment reset to the seed only');
     expect(await restCount(api, 'Account')).toBe(0);
     expect(await restCount(api, 'Lead')).toBe(21628);
+    // Seller Home is still loading after the redirect; let it finish so the navigation aborts nothing.
+    await page.waitForLoadState('networkidle');
     await page.goto('/lightning/o/Account/list');
     await expect(page.getByTestId('list-meta')).toContainText('0 items');
 
@@ -157,6 +159,8 @@ test('Reset to Seed Only leaves leads and users, and Generate Synthetic Data bri
     await generate.getByTestId('generate-confirm').click();
     await expect(page.getByTestId('toast').last()).toContainText('Generated', { timeout: 30_000 });
     expect(await restCount(api, 'Account')).toBe(baselineAccounts);
+    // Seller Home is still loading after the redirect; let it finish so the navigation aborts nothing.
+    await page.waitForLoadState('networkidle');
     await page.goto('/lightning/o/Account/list');
     await expect(page.getByTestId('list-meta')).toContainText(`${baselineAccounts.toLocaleString('en-US')} items`);
   } finally {

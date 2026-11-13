@@ -17,6 +17,7 @@ interface LookupProps {
   /** Extra filters, such as "contacts of this account". */
   where?: { field: string; op: 'eq'; value: unknown }[];
   invalid?: boolean;
+  placeholder?: string;
 }
 
 /** Owner picker: active seeded users, plus the current owner even if inactive. */
@@ -49,7 +50,7 @@ function UserSelect({ id, value, onChange, invalid }: Omit<LookupProps, 'targets
 }
 
 /** Search-as-you-type lookup over the query API, by Name (Subject for tasks). */
-export function Lookup({ id, targets, value, onChange, where = [], invalid }: LookupProps) {
+export function Lookup({ id, targets, value, onChange, where = [], invalid, placeholder }: LookupProps) {
   const [object, setObject] = useState<ObjectName>(value?.object ?? targets[0]!);
   const [text, setText] = useState('');
   const [debounced, setDebounced] = useState('');
@@ -121,7 +122,7 @@ export function Lookup({ id, targets, value, onChange, where = [], invalid }: Lo
                 aria-invalid={invalid || undefined}
                 autoComplete="off"
                 className="slds-input slds-combobox__input"
-                placeholder={`Search ${layoutFor(object) ? object + 's' : object}...`}
+                placeholder={placeholder ?? `Search ${layoutFor(object) ? object + 's' : object}...`}
                 value={text}
                 onFocus={() => setOpen(true)}
                 onBlur={() => setTimeout(() => setOpen(false), 150)}
