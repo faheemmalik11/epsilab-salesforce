@@ -202,14 +202,90 @@ describe('errors over REST', () => {
     expect(h.count('User')).toBe(9);
   });
 
-  it('rolls back a failed conversion completely', async () => {
+  // Conversion writes the Account, then the Contact, then the Opportunity and its contact role, in one
+  // transaction. Both failure points below are reachable through ordinary input, with no test hooks.
+  const conversionState = () => ({
+    rows: ['Account', 'Contact', 'Opportunity', 'OpportunityContactRole', 'Lead', 'mutation_log'].map((t) => h.count(t)),
+    counters: h.db.prepare('SELECT * FROM id_sequence ORDER BY key_prefix').all(),
+  });
+
+  it('rolls back completely when conversion fails at the Opportunity step, after the Account and Contact were written', async () => {
+    // 150 characters is valid for a lead's Company and an Account Name (255) but not for the Opportunity
+    // Name it defaults to (120), so the failure comes after the account and contact inserts.
     const lead = await h.rest('POST', '/api/sobjects/Lead', { LastName: 'Long', Company: 'C'.repeat(150) });
-    const before = ['Account', 'Contact', 'Opportunity', 'OpportunityContactRole', 'mutation_log'].map((t) => h.count(t));
+    const before = conversionState();
     const res = await h.rest('POST', `/api/leads/${lead.body.id}/convert`, { convertedStatus: 'Closed - Converted' });
     expect(res.status).toBe(400);
-    expect(res.body[0]).toMatchObject({ errorCode: 'STRING_TOO_LONG', fields: ['Name'] });
-    expect(['Account', 'Contact', 'Opportunity', 'OpportunityContactRole', 'mutation_log'].map((t) => h.count(t))).toEqual(before);
-    expect((await h.rest('GET', `/api/sobjects/Lead/${lead.body.id}`)).body.IsConverted).toBe(false);
+    expect(res.body).toEqual([{ errorCode: 'STRING_TOO_LONG', message: expect.stringContaining('Opportunity Name'), fields: ['Name'] }]);
+    expect(conversionState()).toEqual(before);
+    expect((await h.rest('GET', `/api/sobjects/Lead/${lead.body.id}`)).body).toMatchObject({ IsConverted: false, Status: 'Open - Not Contacted', ConvertedAccountId: null });
+
+    // The same Company with an opportunity name that fits converts, and creates all four records.
+    const ok = await h.rest('POST', `/api/leads/${lead.body.id}/convert`, { convertedStatus: 'Closed - Converted', opportunityName: 'Short name' });
+    expect(ok.status).toBe(200);
+    expect(ok.body).toMatchObject({ accountId: expect.stringMatching(/^001/), contactId: expect.stringMatching(/^003/), opportunityId: expect.stringMatching(/^006/) });
+  });
+
+  it('rolls back completely when conversion fails at the Contact step, after the Account was written', async () => {
+    // A seed lead with no last name: the Account is created from its Company, then the Contact fails.
+    const noName = (await h.rest('POST', '/api/query', { object: 'Lead', where: [{ field: 'LastName', op: 'isNull' }], limit: 1 })).body.records[0];
+    const before = conversionState();
+    const res = await h.rest('POST', `/api/leads/${noName.Id}/convert`, { convertedStatus: 'Closed - Converted' });
+    expect(res.status).toBe(400);
+    expect(res.body[0]).toMatchObject({ errorCode: 'REQUIRED_FIELD_MISSING', fields: ['LastName'] });
+    expect(conversionState()).toEqual(before);
+    expect((await h.rest('GET', `/api/sobjects/Lead/${noName.Id}`)).body.IsConverted).toBe(false);
+  });
+
+  it('compares text and picklist values case-insensitively, as SOQL does, and IDs exactly', async () => {
+    const total = async (where: unknown[], object = 'Lead') => (await h.rest('POST', '/api/query', { object, where, limit: 1 })).body.totalSize as number;
+    const unconverted = { field: 'IsConverted', op: 'eq', value: false };
+    for (const value of ['Hot', 'hot', 'HOT']) expect(await total([unconverted, { field: 'Rating', op: 'eq', value }]), value).toBe(7111);
+    expect(await total([unconverted, { field: 'Rating', op: 'in', value: ['hot', 'WARM'] }])).toBe(
+      (await total([unconverted, { field: 'Rating', op: 'eq', value: 'Hot' }])) + (await total([unconverted, { field: 'Rating', op: 'eq', value: 'Warm' }])),
+    );
+    expect(await total([{ field: 'Status', op: 'eq', value: 'prospecting' }])).toBe(await total([{ field: 'Status', op: 'eq', value: 'Prospecting' }]));
+    const all = await total([]);
+    expect(await total([{ field: 'Rating', op: 'ne', value: 'hot' }])).toBe(all - (await total([{ field: 'Rating', op: 'eq', value: 'Hot' }])));
+    const account = (await h.rest('POST', '/api/query', { object: 'Account', limit: 1 })).body.records[0];
+    expect(await total([{ field: 'Name', op: 'eq', value: account.Name.toLowerCase() }], 'Account')).toBeGreaterThanOrEqual(1);
+    // MCP returns the same.
+    const client = await h.mcp();
+    const viaMcp = await h.tool(client, 'query_records', { object: 'Lead', where: [unconverted, { field: 'Rating', op: 'eq', value: 'hot' }], limit: 1 });
+    expect(viaMcp.data.totalSize).toBe(7111);
+    // IDs stay exact: a reference filter is not folded.
+    expect(await total([{ field: 'OwnerId', op: 'eq', value: account.OwnerId }], 'Account')).toBeGreaterThan(0);
+    // The AC2 query still uses its index with the case-insensitive comparison.
+    const plan = h.db
+      .prepare(`EXPLAIN QUERY PLAN SELECT "Id" FROM "Lead" WHERE "IsConverted" = 0 AND "Rating" = 'hot' COLLATE NOCASE ORDER BY "Company" COLLATE NOCASE, "Id" LIMIT 50`)
+      .all() as { detail: string }[];
+    expect(plan.map((p) => p.detail).join(' ')).toContain('lead_rating_company');
+  });
+
+  it('accepts a body-less DELETE even with Content-Type: application/json, as most clients send it', async () => {
+    const created = await h.rest('POST', '/api/sobjects/Account', { Name: 'Delete With Header' });
+    const res = await fetch(`${h.baseUrl}/api/sobjects/Account/${created.body.id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' } });
+    expect(res.status).toBe(204);
+    expect((await h.rest('GET', `/api/sobjects/Account/${created.body.id}`)).status).toBe(404);
+    const missing = await fetch(`${h.baseUrl}/api/sobjects/Account/${created.body.id}`, { method: 'DELETE', headers: { 'content-type': 'application/json' } });
+    expect(missing.status).toBe(404);
+    // A write that needs a body still says so, and bad JSON is still a parser error.
+    const empty = await fetch(`${h.baseUrl}/api/sobjects/Account`, { method: 'POST', headers: { 'content-type': 'application/json' } });
+    expect(empty.status).toBe(400);
+    expect((await empty.json())[0].errorCode).toBe('JSON_PARSER_ERROR');
+    const bad = await fetch(`${h.baseUrl}/api/sobjects/Account`, { method: 'POST', headers: { 'content-type': 'application/json' }, body: '{oops' });
+    expect((await bad.json())[0].errorCode).toBe('JSON_PARSER_ERROR');
+  });
+
+  it('stores the standard Task Type field (Call, Email, Meeting, Other) alongside TaskSubtype', async () => {
+    const describe = (await h.rest('GET', '/api/sobjects/Task/describe')).body;
+    expect(describe.fields.find((f: { name: string }) => f.name === 'Type').picklistValues.map((v: { value: string }) => v.value)).toEqual(['Call', 'Email', 'Meeting', 'Other']);
+    const created = await h.rest('POST', '/api/sobjects/Task', { Subject: 'Typed', Type: 'Call', WhatId: (await h.rest('POST', '/api/query', { object: 'Account', limit: 1 })).body.records[0].Id });
+    expect(created.status).toBe(201);
+    expect((await h.rest('GET', `/api/sobjects/Task/${created.body.id}`)).body).toMatchObject({ Type: 'Call', TaskSubtype: 'Task' });
+    const call = await h.rest('POST', '/api/tasks/log-call', { whoId: (await h.rest('POST', '/api/query', { object: 'Contact', limit: 1 })).body.records[0].Id });
+    expect((await h.rest('GET', `/api/sobjects/Task/${call.body.id}`)).body).toMatchObject({ Type: 'Call', TaskSubtype: 'Call', Status: 'Completed' });
+    expect((await h.rest('PATCH', `/api/sobjects/Task/${created.body.id}`, { Type: 'Email' })).status).toBe(204);
   });
 
   it('rejects a bad query limit', async () => {

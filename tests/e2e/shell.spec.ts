@@ -22,7 +22,6 @@ test('navigation reaches every object list and the home page, with no errors', a
   await page.getByRole('link', { name: 'Accounts', exact: true }).click();
   await page.getByTestId('record-link').first().click();
   await expect(page.getByTestId('record-page')).toBeVisible();
-  await page.getByTestId('tab-related').click();
   await expect(page.getByTestId('related-Contact')).toBeVisible();
   expectHealthy(health);
 });
@@ -34,7 +33,7 @@ test('Seller Home shows the six cards, with live pipeline and tasks and marked s
     await expect(page.getByTestId(`home-${card}`)).toBeVisible();
   }
   for (const card of ['goals', 'events', 'salesblazer']) {
-    await expect(page.getByTestId(`home-${card}`).getByTestId('stub-badge')).toBeVisible();
+    await expect(page.getByTestId(`home-${card}`).getByTestId('scope-label')).toHaveText('Not in scope');
   }
   const count = Number(await page.getByTestId('pipeline-count').locator('.pipeline__count').textContent({ timeout: 10_000 }));
   const leadId = await restCreate(api, 'Lead', { LastName: 'Pipeline', Company: 'Home Co' });
@@ -54,13 +53,17 @@ test('out-of-scope entry points are visibly marked as stubs', async ({ page, hea
   await page.goto('/lightning/page/home');
   for (const name of ['Reports', 'Dashboards', 'Forecasts', 'Campaigns', 'Cases']) {
     const tab = page.getByRole('link', { name: new RegExp(`^${name}`) });
-    await expect(tab.getByTestId('stub-badge')).toBeVisible();
+    await expect(tab).toHaveClass(/nav-stub/);
+    await expect(tab.locator('[title]').first()).toHaveAttribute('title', `${name} is not in scope for this Salesforce clone`);
     await tab.click();
     await expect(page.getByTestId('stub-page')).toContainText(`${name}`);
-    await expect(page.getByTestId('stub-page')).toContainText('Not available in this trial');
+    await expect(page.getByTestId('stub-page').getByTestId('scope-label')).toHaveText('Not in scope');
+    await expect(page.getByTestId('stub-page')).toContainText('is not in scope for this Salesforce clone');
   }
   await expect(page.getByTestId('global-search-stub')).toBeDisabled();
-  await expect(page.getByTestId('global-search-stub')).toHaveAttribute('placeholder', /Not available in this trial/);
+  await expect(page.getByTestId('global-search-stub')).toHaveAttribute('title', 'Global search is not in scope for this Salesforce clone');
+  // No page anywhere uses the old trial wording.
+  await expect(page.getByText(/in this trial/i)).toHaveCount(0);
   expectHealthy(health);
 });
 

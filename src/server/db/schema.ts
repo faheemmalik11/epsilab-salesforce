@@ -33,7 +33,7 @@ export function createTableSql(object: ObjectDef): string {
  */
 const INDEXES: readonly string[] = [
   'CREATE INDEX lead_company ON "Lead" ("IsConverted", "Company" COLLATE NOCASE, "Id")',
-  'CREATE INDEX lead_rating_company ON "Lead" ("IsConverted", "Rating", "Company" COLLATE NOCASE, "Id")',
+  'CREATE INDEX lead_rating_company ON "Lead" ("IsConverted", "Rating" COLLATE NOCASE, "Company" COLLATE NOCASE, "Id")',
   'CREATE INDEX lead_owner ON "Lead" ("OwnerId")',
   'CREATE INDEX lead_last_modified ON "Lead" ("LastModifiedDate")',
   'CREATE INDEX account_name ON "Account" ("Name" COLLATE NOCASE, "Id")',

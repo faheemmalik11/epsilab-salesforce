@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router';
 import { useDescribe, useRecordQuery } from '../api/hooks';
 import { useActingUser } from '../context/ActingUser';
 import { LAYOUTS, TAB_ORDER, recordTitle, type TabObject } from '../lib/layouts';
@@ -8,7 +8,7 @@ import { recordUrl } from './FieldOutput';
 import { ButtonIcon, Icon } from './Icon';
 import { Menu, type MenuSection } from './Menu';
 import { RecordForm } from './RecordForm';
-import { STUB_TEXT, StubBadge } from './Stub';
+import { scopeTitle } from './Stub';
 
 /** Sales app tabs that exist in Salesforce but are out of scope here; each opens a stub page. */
 export const STUB_TABS = [
@@ -79,9 +79,8 @@ function UserSwitcher() {
 function NavItem({ to, label, stub }: { to: string; label: string; stub?: boolean }) {
   return (
     <NavLink to={to} className={({ isActive }) => `slds-context-bar__item ${stub ? 'nav-stub' : ''} ${isActive ? 'slds-is-active' : ''}`}>
-      <span className="slds-context-bar__label-action" title={stub ? `${label}: ${STUB_TEXT}` : label}>
+      <span className="slds-context-bar__label-action" title={stub ? scopeTitle(label) : label}>
         <span className="slds-truncate">{label}</span>
-        {stub && <StubBadge />}
       </span>
     </NavLink>
   );
@@ -163,10 +162,89 @@ function ObjectNavItem({ object, onNew }: { object: TabObject; onNew(object: Tab
   );
 }
 
+interface SidebarApp {
+  label: string;
+  icon: string;
+  /** Where a supported app goes; out-of-scope apps have none. */
+  to?: string;
+}
+
+/** The Lightning app rail, in the order a Sales org shows it. */
+const SIDEBAR_APPS: SidebarApp[] = [
+  { label: 'Home', icon: 'home', to: '/lightning/page/home' },
+  { label: 'Contacts', icon: 'people', to: '/lightning/o/Contact/list' },
+  { label: 'Accounts', icon: 'company', to: '/lightning/o/Account/list' },
+  { label: 'Sales', icon: 'chart', to: '/lightning/o/Lead/list' },
+  { label: 'Service', icon: 'heart' },
+  { label: 'Marketing', icon: 'target' },
+  { label: 'Commerce', icon: 'cart' },
+  { label: 'Your Account', icon: 'store' },
+  { label: 'Automation', icon: 'flow' },
+];
+
+/** The rail item for the current page: Home, Contacts and Accounts have their own; everything else is Sales. */
+function activeApp(pathname: string): string {
+  if (pathname.startsWith('/lightning/page/home')) return 'Home';
+  if (/^\/lightning\/[or]\/Contact\//.test(pathname)) return 'Contacts';
+  if (/^\/lightning\/[or]\/Account\//.test(pathname)) return 'Accounts';
+  return 'Sales';
+}
+
+function Sidebar() {
+  const location = useLocation();
+  const active = activeApp(location.pathname);
+  return (
+    <nav className="app-sidebar" aria-label="Apps" data-testid="app-sidebar">
+      <ul>
+        {SIDEBAR_APPS.map((app) => {
+          const content = (
+            <>
+              <span className="app-sidebar__icon">
+                <svg aria-hidden="true">
+                  <use href={iconHref('utility', app.icon)} />
+                </svg>
+              </span>
+              <span className="app-sidebar__label">{app.label}</span>
+            </>
+          );
+          return (
+            <li key={app.label}>
+              {app.to ? (
+                <Link
+                  to={app.to}
+                  className={`app-sidebar__item ${active === app.label ? 'app-sidebar__item_active' : ''}`}
+                  aria-current={active === app.label ? 'page' : undefined}
+                  aria-label={`${app.label} app`}
+                  data-testid={`sidebar-${app.label}`}
+                >
+                  {content}
+                </Link>
+              ) : (
+                <span
+                  className="app-sidebar__item app-sidebar__item_disabled"
+                  role="link"
+                  aria-disabled="true"
+                  title={scopeTitle(app.label)}
+                  aria-label={`${app.label} app: not in scope`}
+                  data-testid={`sidebar-${app.label.replace(' ', '')}`}
+                >
+                  {content}
+                </span>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}
+
 export function AppShell({ children }: { children: ReactNode }) {
   const [creating, setCreating] = useState<TabObject | null>(null);
   const navigate = useNavigate();
   return (
+    <div className="app-frame">
+      <Sidebar />
     <div className="app-shell">
       <header className="slds-global-header_container">
         <div className="slds-global-header slds-grid slds-grid_align-spread">
@@ -185,8 +263,9 @@ export function AppShell({ children }: { children: ReactNode }) {
                   type="search"
                   className="slds-input"
                   disabled
-                  placeholder={`Search... (${STUB_TEXT})`}
-                  aria-label={`Global search: ${STUB_TEXT}`}
+                  placeholder="Search..."
+                  title={scopeTitle('Global search')}
+                  aria-label={scopeTitle('Global search')}
                   data-testid="global-search-stub"
                 />
               </div>
@@ -200,7 +279,7 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="slds-context-bar">
         <div className="slds-context-bar__primary">
           <div className="slds-context-bar__item slds-context-bar__dropdown-trigger slds-no-hover">
-            <span className="slds-context-bar__icon-action" title={`App Launcher: ${STUB_TEXT}`}>
+            <span className="slds-context-bar__icon-action" title={scopeTitle('The App Launcher')}>
               <Icon name="apps" category="utility" size="x-small" />
             </span>
             <span className="slds-context-bar__label-action slds-context-bar__app-name">
@@ -240,6 +319,7 @@ export function AppShell({ children }: { children: ReactNode }) {
           }}
         />
       )}
+    </div>
     </div>
   );
 }

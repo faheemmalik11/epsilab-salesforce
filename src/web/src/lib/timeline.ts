@@ -35,3 +35,50 @@ export function groupTimeline<T extends TimelineTask>(tasks: T[], today: string)
   }
   return groups;
 }
+
+export type ActivityRange = 'all' | '2months' | '7days';
+export type ActivityScope = 'all' | 'mine';
+export type ActivityType = 'all' | 'Call' | 'Email' | 'Task';
+
+export interface ActivityFilters {
+  range: ActivityRange;
+  scope: ActivityScope;
+  type: ActivityType;
+}
+
+/** Salesforce's default activity filters. */
+export const DEFAULT_ACTIVITY_FILTERS: ActivityFilters = { range: '2months', scope: 'all', type: 'all' };
+
+export interface FilterableTask extends TimelineTask {
+  OwnerId?: unknown;
+  TaskSubtype?: unknown;
+}
+
+const RANGE_DAYS: Record<ActivityRange, number | null> = { all: null, '2months': 61, '7days': 7 };
+
+/**
+ * The activity timeline filters. As in Lightning, the date range applies to past activity only:
+ * open tasks always show under "Upcoming & Overdue".
+ */
+export function filterActivities<T extends FilterableTask>(tasks: T[], filters: ActivityFilters, today: string, userId: string | null): T[] {
+  const days = RANGE_DAYS[filters.range];
+  // Until the app clock has loaded there is no today to measure the range from.
+  const since = days === null || !today ? null : new Date(Date.parse(`${today}T00:00:00Z`) - days * 86_400_000).toISOString().slice(0, 10);
+  return tasks.filter((task) => {
+    if (filters.scope === 'mine' && task.OwnerId !== userId) return false;
+    if (filters.type !== 'all' && (task.TaskSubtype ?? 'Task') !== filters.type) return false;
+    if (since && task.IsClosed === true) {
+      const day = String(task.ActivityDate ?? task.CreatedDate ?? today).slice(0, 10);
+      if (day < since) return false;
+    }
+    return true;
+  });
+}
+
+/** "Within 2 months • All activities • All types", as Lightning summarizes the filters. */
+export function describeFilters(filters: ActivityFilters): string {
+  const range = { all: 'All time', '2months': 'Within 2 months', '7days': 'Last 7 days' }[filters.range];
+  const scope = filters.scope === 'mine' ? 'My activities' : 'All activities';
+  const type = { all: 'All types', Call: 'Calls', Email: 'Emails', Task: 'Tasks' }[filters.type];
+  return `${range} • ${scope} • ${type}`;
+}

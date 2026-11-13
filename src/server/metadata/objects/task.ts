@@ -1,5 +1,5 @@
 import { auditFields, derived, field, idField, ownerField, picklist, reference } from '../fields.js';
-import { TASK_PRIORITY, TASK_STATUS, TASK_SUBTYPE } from '../picklists.js';
+import { TASK_PRIORITY, TASK_STATUS, TASK_SUBTYPE, TASK_TYPE } from '../picklists.js';
 import type { ObjectDef } from '../types.js';
 
 export const Task: ObjectDef = {
@@ -13,6 +13,7 @@ export const Task: ObjectDef = {
     field('Subject', 'Subject', 'string', { length: 255 }),
     picklist('Status', 'Status', TASK_STATUS),
     picklist('Priority', 'Priority', TASK_PRIORITY),
+    picklist('Type', 'Type', TASK_TYPE),
     field('ActivityDate', 'Due Date', 'date'),
     reference('WhoId', 'Name', ['Lead', 'Contact']),
     reference('WhatId', 'Related To', ['Account', 'Opportunity']),

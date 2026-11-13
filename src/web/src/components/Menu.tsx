@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useId, useRef, useState, type KeyboardEvent, type ReactNode, type Ref } from 'react';
 import { iconHref } from '../icons';
-import { STUB_TEXT, StubBadge } from './Stub';
+import { ScopeLabel, scopeTitle } from './Stub';
 
 export interface MenuItem {
   id: string;
@@ -160,7 +160,7 @@ export function Menu({ trigger, sections, align = 'left', header, className = ''
                       aria-checked={item.checked}
                       aria-disabled={unavailable || undefined}
                       tabIndex={-1}
-                      title={item.stub ? STUB_TEXT : undefined}
+                      title={item.stub && typeof item.label === 'string' ? scopeTitle(item.label) : undefined}
                       data-testid={item.testId}
                       onMouseEnter={(event) => !unavailable && event.currentTarget.focus()}
                       onClick={(event) => {
@@ -186,7 +186,7 @@ export function Menu({ trigger, sections, align = 'left', header, className = ''
                           </svg>
                         )}
                         {item.label}
-                        {item.stub && <StubBadge />}
+                        {item.stub && <ScopeLabel />}
                       </span>
                     </a>
                   </li>

@@ -34,6 +34,11 @@ describe('same errors from REST and MCP (AC5)', () => {
     expect(viaUpdate.data).toEqual(rest.body);
     expect(viaStage.data).toEqual(rest.body);
     expect(rest.body[0].errorCode).toBe('FIELD_CUSTOM_VALIDATION_EXCEPTION');
+    // The exact text, byte for byte, on both surfaces.
+    expect(rest.body).toEqual([
+      { errorCode: 'FIELD_CUSTOM_VALIDATION_EXCEPTION', message: 'Amount is required for stages after Qualification.', fields: ['Amount'] },
+    ]);
+    expect(Buffer.from(viaStage.data[0].message).toString('hex')).toBe(Buffer.from('Amount is required for stages after Qualification.').toString('hex'));
   });
 
   it('invalid reference and restricted picklist', async () => {

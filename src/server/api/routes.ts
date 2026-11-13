@@ -51,9 +51,28 @@ function optionalInt(name: string, value: string | undefined): number | undefine
   return Number(value);
 }
 
+/**
+ * JSON bodies, where an empty body is no body. Most HTTP clients send `Content-Type: application/json`
+ * on every request, including a body-less DELETE; Fastify's default parser rejects that. Routes that
+ * need a body still reject a missing one with the Salesforce error array.
+ */
+function registerJsonParser(app: FastifyInstance): void {
+  app.removeContentTypeParser('application/json');
+  app.addContentTypeParser('application/json', { parseAs: 'string' }, (_request, raw, done) => {
+    const text = String(raw);
+    if (text.trim() === '') return done(null, undefined);
+    try {
+      done(null, JSON.parse(text));
+    } catch (error) {
+      done(Object.assign(new Error(`Unexpected JSON in the request body: ${(error as Error).message}`), { statusCode: 400 }), undefined);
+    }
+  });
+}
+
 /** REST routes. Each one only translates HTTP to a shared service call and back. */
 export async function registerApiRoutes(app: FastifyInstance, runtime: Runtime): Promise<void> {
   const ctx = (request: FastifyRequest) => contextFor(runtime, actingUser(request));
+  registerJsonParser(app);
 
   await registerAdminRoutes(app, runtime);
 

@@ -31,7 +31,7 @@ describe('database schema', () => {
     const plan = (t.db
       .prepare(
         `EXPLAIN QUERY PLAN SELECT "Id" FROM "Lead"
-         WHERE "IsConverted" = 0 AND "Rating" = 'Hot'
+         WHERE "IsConverted" = 0 AND "Rating" = 'Hot' COLLATE NOCASE
          ORDER BY "Company" COLLATE NOCASE, "Id" LIMIT 50`,
       )
       .all() as { detail: string }[]).map((r) => r.detail).join(' | ');

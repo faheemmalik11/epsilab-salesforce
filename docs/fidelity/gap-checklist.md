@@ -84,3 +84,19 @@ Compared in the same org at the same viewport (1854×927); the Edit dialog was o
 | Backdrop click | **The org's Edit Lead dialog does not close on a backdrop click** | Did not close | **Built as requested in review:** a backdrop click, Escape and the close button all dismiss the dialog. With unsaved changes they first ask "Discard Changes?" (Keep Editing / Discard). Clicks inside never close it. This is an intentional difference from the org, recorded in `TRADEOFFS.md` |
 | Table header separators | Only data column headers have a divider: a 1px #c9c9c9 line at their right edge. The row number (60px), checkbox (32px) and actions columns have none, and body cells have no vertical lines | A left border on every header after the first, including around the row number and checkbox columns | **Fixed:** the divider is only on data columns. Column widths, header and cell alignment, row dividers and selection are unchanged (tested) |
 | Edit dialog title | "Edit <record name>" | Raw record Id for records with no name | **Fixed:** the record's name, or "Edit Lead" (the object label) when it has none. Seed records are untouched (tested) |
+
+## Review round 4 (lead record page, sidebar, scope markers)
+
+Inspected in the real org at 1854×927 (read-only).
+
+| Control | Salesforce (measured) | Result |
+|---|---|---|
+| App sidebar | 76px, #002775, full height; items 60×65 with 12px gaps; a 44px icon box with an 8px radius; 10px/600 white labels; the selected app has a 2px #f3f3f3 box, and hover shows a light box | **Built.** Home, Contacts, Accounts and Sales navigate, and the current one is selected. Service, Marketing, Commerce, Your Account and Automation are disabled, muted and have a "not in scope" tooltip. Icons are SLDS glyphs, not Salesforce's PNG artwork. The brief's Seller Home image has no sidebar (see `TRADEOFFS.md`) |
+| Lead details sections | About (Lead Status, Name, Company, Title, Website, Description, Lead Owner, Rating), Get in Touch (Phone, Email, Address), Segment (No. of Employees, Annual Revenue, Lead Source, Industry), History (Created By, Last Modified By with dates); 48px rows in one column | **Built**, with the same order and fields (`record-layout.spec.ts`). Address and Name are single rows that edit as groups; History is read-only |
+| Record columns | Details 559px, middle 580px, right 568px, 12px gaps; no tabs on the lead page | **Built** as equal columns. Leads give the right column's width to activity, since the org's right-column panels are not in the brief |
+| Lead header | Icon, "Lead", name; Convert / Change Owner / Edit / ▾; no highlights row | **Matches** (the org's Slack button is not copied) |
+| Activity | Action buttons; "Filters: Within 2 months • All activities • All types" with a settings button; Refresh • Expand All; Upcoming & Overdue; the empty state; "To change what's shown, try changing your filters." with Show All Activities | **Built and working** (date range, owner and type filters). Not built: the "Only show activities with insights" toggle (AI) and the dropdown chevrons on the action buttons |
+| Scope markers | n/a | **Changed:** one subtle "Not in scope" label or tooltip everywhere. No gray boxes, no "Stub" pills, no trial wording (`shell.spec.ts`, `convert.spec.ts`) |
+| Convert dialog fields | Account Name editable in the org | Shown as text (ours can't be renamed; it is the lead's Company). Unsupported options have no input box. Account Search is required only for Choose Existing, and Account Name only for Create New, with a "Complete this field." error |
+
+Remaining differences: the sidebar icons are SLDS glyphs rather than the org's app artwork; the lead page has no People Score, Consent, AI Summary, duplicates or Files panels; and the activity action buttons have no dropdown chevrons.

@@ -25,25 +25,15 @@ Configuration comes from environment variables (see `.env.example`): `GUI_PORT`,
 Salesforce Lightning Experience style at desktop width: the Salesforce Lightning Design System (SLDS 1) with the Cosmos look recreated in `src/web/src/cosmos.css`. Pick the seeded user you act as from **Acting as** in the header.
 
 - **Seller Home:** Build Pipeline (my leads from the last 30 days and their activity), Today's Tasks and Recent Records.
-- **Navigation:** each object tab's menu has New, recent records and list views.
-- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters, "Search this list", wrap or clip per column, inline edit, row actions (Edit, Delete, Change Owner) and exact counts; New (with Save & New) and Edit forms; record pages with inline edit, Change Owner, Delete, Related lists and Activity (docked Log a Call and New Task composer, grouped timeline).
+- **Navigation:** an app sidebar (Home, Contacts, Accounts, Sales), and object tab menus with New, recent records and list views.
+- **Leads, Accounts, Contacts, Opportunities, Tasks:** list views with sorting, filters, "Search this list", wrap or clip per column, inline edit, row actions (Edit, Delete, Change Owner) and exact counts; New (with Save & New) and Edit forms; record pages with details, activity and related lists side by side, inline edit, Change Owner and Delete. The lead page follows Lightning's About, Get in Touch, Segment and History sections. Activity has a docked Log a Call and New Task composer and a filtered, grouped timeline.
 - **Lead workflow:** Log a Call, Lead Status path, Convert (new or existing account, optional opportunity). Converted leads are read-only with links to the new records.
 - **Opportunity workflow:** stage path, the close dialog (Closed Won or Closed Lost), Contact Roles, tasks and Next Step.
 - Validation errors are the API's own messages.
 
-### Stubs (visibly marked in the UI)
+### Stubs
 
-| Stub | Where |
-|---|---|
-| Reports, Dashboards, Forecasts, Campaigns, Cases | Navigation tabs, each opening a page marked "Not available in this trial" |
-| Global search | Disabled search box in the header |
-| App Launcher | Inert icon beside the app name |
-| Recently Viewed, All Open list views | Disabled entries in the list view picker |
-| New Event, Email | Disabled buttons in the activity composer |
-| My Goals, Today's Events, Salesblazer, Recent Records "View All" | Seller Home cards and buttons |
-| List View Controls, Display as Table, Edit List, Show charts, Pin | Disabled list view toolbar buttons |
-| Edit Labels; New Event | List row menu; record actions menu |
-| Choose Existing Contact, Choose Existing Opportunity | Disabled options in the Convert dialog |
+Out-of-scope entry points stay visible, as in Salesforce, but are disabled and marked "Not in scope" with a tooltip naming the feature. The full list is in `FEATURES.md`.
 
 Icons and illustrations come from the Salesforce Lightning Design System (© Salesforce, CC BY-ND 4.0, https://creativecommons.org/licenses/by-nd/4.0/), used unmodified. The SLDS CSS is BSD-3-Clause.
 
@@ -86,13 +76,13 @@ Query operators: `eq`, `ne`, `in`, `isNull`, `notNull`, `contains`. The All Lead
 - **Owners:** workloads differ between the 7 active reps. The 2 inactive users still appear as the creators of 237 older accounts.
 
 **Realistically messy, on purpose (brief: "near-duplicate accounts, stale opportunities and missing optional fields"):**
-- 33 near-duplicate account pairs: "Acme Inc." and "Acme, Inc.", a trailing space, "and" for "&", all capitals, a dropped "LLC".
+- 38 near-duplicate accounts: "Acme Inc." and "Acme, Inc.", a trailing space, "and" for "&", all capitals, a dropped or added "LLC"/"Inc". **Counting rule:** lowercase the name, replace " and " with " & ", remove `.` and `,`, collapse whitespace, trim, then drop one trailing "inc", "llc", "co" or "corp". Names that normalize to the same text are duplicates. In the `default` baseline this finds 36 groups covering 72 accounts; looser rules find a few more.
 - 269 stale opportunities: open, past their close date, and untouched for 90+ days.
 - 328 overdue open tasks.
 - Optional fields left blank at realistic rates: Website on 44% of accounts, Email on 38% of contacts, Amount on early-stage deals.
 - Seed leads at shared companies also appear as contacts, the lead/contact duplicate every org has.
 
-The same seed, profile and `CLOCK` always produce the same database, byte for byte (`89e95c53…` for `default`, `5cf56c37…` for `small` at the default clock, in the container and locally). Phone numbers use the fictional 555-01xx range, and email and web domains end in `.example`.
+The same seed, profile and `CLOCK` always produce the same database, byte for byte (`3cec1ec6…` for `default`, `68cdad76…` for `small` at the default clock, in the container and locally). Phone numbers use the fictional 555-01xx range. Generated emails and websites use the reserved `.example` domain (2,773 contact emails, 1,034 websites); the 398 contacts copied from seed leads keep the seed's pseudonymized `@example.invalid` emails.
 
 ## Reset, snapshots and clock
 

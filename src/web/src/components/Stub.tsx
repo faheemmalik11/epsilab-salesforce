@@ -1,10 +1,16 @@
-/** The marker every out-of-scope entry point carries, so nothing is stubbed silently. */
-export const STUB_TEXT = 'Not available in this trial';
+/** The wording every out-of-scope entry point uses, so nothing is stubbed silently. */
+export const STUB_TEXT = 'Not in scope';
 
-export function StubBadge() {
+/** Tooltip text naming the out-of-scope feature. */
+export function scopeTitle(feature: string): string {
+  return `${feature} is not in scope for this Salesforce clone`;
+}
+
+/** The subtle label beside a disabled, out-of-scope control. */
+export function ScopeLabel({ feature }: { feature?: string }) {
   return (
-    <span className="slds-badge slds-badge_lightest slds-m-left_x-small" data-testid="stub-badge">
-      Stub
+    <span className="scope-label" data-testid="scope-label" title={feature ? scopeTitle(feature) : STUB_TEXT}>
+      {STUB_TEXT}
     </span>
   );
 }

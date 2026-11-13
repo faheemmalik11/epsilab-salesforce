@@ -119,7 +119,7 @@ test('row actions: Change Owner and Delete work, Edit Labels is a marked stub', 
     const menu = page.getByTestId('row-action-menu');
     await expect(menu.getByRole('menuitem')).toHaveText(['Edit', 'Delete', 'Change Owner', /Edit Labels/]);
     await expect(menu.getByRole('menuitem', { name: /Edit Labels/ })).toHaveAttribute('aria-disabled', 'true');
-    await expect(menu.getByTestId('stub-badge')).toBeVisible();
+    await expect(menu.getByTestId('scope-label')).toBeVisible();
     await menu.getByTestId('row-change-owner').click();
     await page.locator('#change-owner').selectOption(jon.Id);
     await page.getByTestId('change-owner-submit').click();

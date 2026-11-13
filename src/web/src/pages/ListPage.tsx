@@ -13,7 +13,7 @@ import { changedFields, initialValue, toApiValue } from '../lib/formValues';
 import { ButtonIcon, Icon } from '../components/Icon';
 import { PageError } from '../components/PageError';
 import { RecordForm } from '../components/RecordForm';
-import { STUB_TEXT, StubBadge } from '../components/Stub';
+import { scopeTitle } from '../components/Stub';
 import { useActingUser } from '../context/ActingUser';
 import { formatNumber } from '../lib/format';
 import { LAYOUTS, recordTitle, type TabObject } from '../lib/layouts';
@@ -357,10 +357,10 @@ export function ListPage({ object }: { object: TabObject }) {
                     type="button"
                     className="slds-button slds-button_icon slds-button_icon-border list-header__pin"
                     disabled
-                    title={`Pin this list view: ${STUB_TEXT}`}
+                    title={scopeTitle('Pinning a list view')}
                   >
                     <ButtonIcon name="pin" />
-                    <span className="slds-assistive-text">Pin this list view: {STUB_TEXT}</span>
+                    <span className="slds-assistive-text">{scopeTitle('Pinning a list view')}</span>
                   </button>
                 </div>
               </div>
@@ -404,11 +404,11 @@ export function ListPage({ object }: { object: TabObject }) {
                   type="button"
                   className="slds-button slds-button_icon slds-button_icon-border-filled"
                   disabled
-                  title={`${tool.label}: ${STUB_TEXT}`}
+                  title={scopeTitle(tool.label)}
                 >
                   <ButtonIcon name={tool.icon} />
                   <span className="slds-assistive-text">
-                    {tool.label}: {STUB_TEXT}
+                    {scopeTitle(tool.label)}
                   </span>
                 </button>
               ))}

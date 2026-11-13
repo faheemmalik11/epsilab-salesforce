@@ -488,15 +488,6 @@ body,
   color: var(--cosmos-text-weak);
 }
 
-.nav-stub .slds-badge {
-  font-size: 0.625rem;
-  padding: 0 0.375rem;
-  line-height: 1rem;
-  background: var(--cosmos-shade);
-  color: var(--cosmos-text-weak);
-  border: 0;
-}
-
 /* Record forms */
 .form-legend {
   margin-bottom: 0.5rem;
@@ -571,20 +562,34 @@ body,
   margin-bottom: 0.75rem;
 }
 
+/* Measured on a Lightning lead page: equal columns with a 12px gap (559, 580 and 568px at 1854px). */
 .record-columns {
-  display: flex;
-  align-items: flex-start;
+  display: grid;
   gap: 0.75rem;
+  align-items: start;
 }
 
-.record-columns__main {
-  flex: 2 1 0;
+.record-columns_3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.record-columns_2 {
+  grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+}
+
+.record-columns_1 {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.record-columns__related {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
   min-width: 0;
 }
 
-.record-columns__side {
-  flex: 1 1 0;
-  min-width: 0;
+.record-columns__related > .slds-card {
+  margin: 0;
 }
 
 .record-page .slds-section__title {
@@ -713,14 +718,6 @@ body,
   font-weight: 400;
 }
 
-.convert-disabled {
-  padding: 0.25rem 0.75rem;
-  border: 1px solid var(--cosmos-border);
-  border-radius: 0.5rem;
-  background: #e5e5e5;
-  color: var(--cosmos-text-weak);
-}
-
 .convert-footer-fields {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -757,18 +754,6 @@ body,
 .activity-action:disabled {
   cursor: default;
   opacity: 0.4;
-}
-
-.activity-stub-note {
-  margin: 0.375rem 0 0.75rem;
-  font-size: 0.75rem;
-  color: var(--cosmos-text-weak);
-}
-
-.activity-stub-note .slds-badge {
-  font-size: 0.625rem;
-  line-height: 1rem;
-  padding: 0 0.375rem;
 }
 
 .activity-timeline__item {
@@ -985,4 +970,254 @@ body,
 .docked-composer__pill .slds-pill__label {
   flex: none;
   color: var(--cosmos-text-value);
+}
+
+/* Out-of-scope markers: one subtle label, never a pill or a warning box */
+.scope-label {
+  margin-left: 0.5rem;
+  font-size: 0.6875rem;
+  font-weight: 400;
+  line-height: 1;
+  letter-spacing: 0;
+  color: #747474;
+  white-space: nowrap;
+  cursor: default;
+  vertical-align: middle;
+}
+
+.slds-card__header-title .scope-label {
+  vertical-align: 0.2em;
+}
+
+.convert-unsupported__option {
+  display: flex;
+  align-items: center;
+}
+
+.convert-unsupported__option .slds-radio {
+  margin-bottom: 0;
+}
+
+.convert-unsupported .slds-input {
+  margin-top: 0.375rem;
+}
+
+.convert-unsupported .slds-radio__label,
+.convert-unsupported .slds-input {
+  cursor: default;
+}
+
+.convert-unsupported .slds-radio .slds-form-element__label {
+  color: #939393;
+}
+
+.stub-page {
+  padding: 0.75rem 1rem;
+}
+
+.stub-page__body {
+  padding: 4rem 1rem;
+  text-align: center;
+}
+
+.stub-page__title {
+  margin-bottom: 0.75rem;
+  font-size: 1.75rem;
+  font-weight: 400;
+}
+
+/* App sidebar (measured: 76px, #002775, 60x65 items 12px apart, 44px icon box with an 8px radius,
+   10px/600 white labels; the selected app's icon box has a 2px #f3f3f3 border) */
+.app-frame {
+  display: flex;
+  height: 100%;
+}
+
+.app-frame > .app-shell {
+  flex: 1;
+  min-width: 0;
+}
+
+.app-sidebar {
+  flex: none;
+  width: 4.75rem;
+  height: 100%;
+  overflow-y: auto;
+  padding: 1rem 0;
+  background: #002775;
+}
+
+.app-sidebar ul {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.app-sidebar__item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 3.75rem;
+  min-height: 4.0625rem;
+  color: #fff;
+  text-decoration: none;
+}
+
+.app-sidebar__item:hover,
+.app-sidebar__item:focus {
+  color: #fff;
+  text-decoration: none;
+}
+
+.app-sidebar__icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.75rem;
+  height: 2.75rem;
+  border: 2px solid transparent;
+  border-radius: 0.5rem;
+  transition: border-color 150ms ease-in-out;
+}
+
+.app-sidebar__icon svg {
+  width: 1.75rem;
+  height: 1.75rem;
+  fill: #fff;
+}
+
+.app-sidebar__item:hover .app-sidebar__icon {
+  border-color: rgba(243, 243, 243, 0.55);
+}
+
+.app-sidebar__item_active .app-sidebar__icon,
+.app-sidebar__item_active:hover .app-sidebar__icon {
+  border-color: #f3f3f3;
+}
+
+.app-sidebar__item:focus-visible {
+  outline: 0;
+}
+
+.app-sidebar__item:focus-visible .app-sidebar__icon {
+  border-color: #fff;
+  box-shadow: 0 0 0 2px #7cb1fe;
+}
+
+.app-sidebar__label {
+  padding-top: 0.25rem;
+  font-size: 0.625rem;
+  font-weight: 600;
+  line-height: 0.9375rem;
+  text-align: center;
+}
+
+.app-sidebar__item_disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.app-sidebar__item_disabled:hover .app-sidebar__icon {
+  border-color: transparent;
+}
+
+.related-card {
+  background: var(--cosmos-surface);
+}
+
+.convert-static {
+  padding: 0.25rem 0;
+  font-size: 0.875rem;
+  color: var(--cosmos-text-value);
+  overflow-wrap: anywhere;
+}
+
+.convert-static_empty {
+  font-size: 0.8125rem;
+  font-style: italic;
+  color: var(--cosmos-text-weak);
+}
+
+/* Activity toolbar, empty state and filter notice (as on a Lightning record timeline) */
+.activity-panel .slds-card__body {
+  padding-top: 1rem;
+}
+
+.activity-toolbar {
+  margin: 0.75rem 0 0.5rem;
+  text-align: right;
+  font-size: 0.75rem;
+  color: var(--cosmos-text-weak);
+}
+
+.activity-toolbar__filters {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}
+
+.activity-toolbar__settings.slds-button_icon-border-filled {
+  width: 1.5rem;
+  height: 1.5rem;
+  border-radius: 50%;
+  border-color: var(--cosmos-brand-dark);
+}
+
+.activity-toolbar__settings .slds-button__icon {
+  width: 0.875rem;
+  height: 0.875rem;
+  fill: var(--cosmos-brand-dark);
+}
+
+.activity-toolbar__links {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.25rem;
+  margin-top: 0.25rem;
+}
+
+.activity-link.slds-button {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  line-height: 1.5;
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--cosmos-brand-dark);
+}
+
+.activity-link.slds-button:hover {
+  transform: none;
+  box-shadow: none;
+  text-decoration: underline;
+}
+
+.activity-group__empty p:first-child {
+  color: var(--cosmos-text-value);
+}
+
+.activity-hidden {
+  margin-top: 0.75rem;
+  text-align: center;
+}
+
+.activity-hidden__note {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-bottom: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--cosmos-radius-input);
+  background: var(--cosmos-step);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: left;
+  color: var(--cosmos-text-strong);
+}
+
+.activity-hidden__note .slds-button__icon {
+  fill: var(--cosmos-text-weak);
 }

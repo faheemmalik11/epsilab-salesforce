@@ -10,18 +10,30 @@ import { Icon } from './Icon';
 import { Lookup, type LookupValue } from './Lookup';
 import { Modal } from './Modal';
 import { PageError } from './PageError';
-import { STUB_TEXT, StubBadge } from './Stub';
+import { ScopeLabel, scopeTitle } from './Stub';
 import { formatNumber } from '../lib/format';
 
-function Radio({ id, name, label, checked, disabled, onChange }: { id: string; name: string; label: string; checked: boolean; disabled?: boolean; onChange?(): void }) {
+function Radio({ id, name, label, checked, disabled, onChange, title }: { id: string; name: string; label: string; checked: boolean; disabled?: boolean; onChange?(): void; title?: string }) {
   return (
-    <span className="slds-radio">
+    <span className="slds-radio" title={title}>
       <input type="radio" id={id} name={name} checked={checked} disabled={disabled} onChange={onChange} />
       <label className="slds-radio__label" htmlFor={id}>
         <span className="slds-radio_faux" />
         <span className="slds-form-element__label">{label}</span>
       </label>
     </span>
+  );
+}
+
+/** A Choose Existing option the clone doesn't support: shown as Salesforce lays it out, disabled and labelled. */
+function UnsupportedChoice({ id, name, label, feature }: { id: string; name: string; label: string; feature: string }) {
+  return (
+    <div className="convert-unsupported" data-testid={`${id}-unsupported`}>
+      <div className="convert-unsupported__option">
+        <Radio id={id} name={name} label={label} checked={false} disabled title={scopeTitle(feature)} />
+        <ScopeLabel feature={feature} />
+      </div>
+    </div>
   );
 }
 
@@ -91,6 +103,7 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
   const convertedStatuses = (describe.data?.fields.find((f) => f.name === 'Status')?.picklistValues ?? []).filter((v) => v.converted);
 
   const [accountMode, setAccountMode] = useState<'new' | 'existing'>('new');
+  const [submitted, setSubmitted] = useState(false);
   const [account, setAccount] = useState<LookupValue | null>(null);
   const [opportunityName, setOpportunityName] = useState(company);
   const [noOpportunity, setNoOpportunity] = useState(false);
@@ -108,6 +121,12 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
     setAccount(value);
     if (value) setAccountMode('existing');
   };
+
+  // Account Search is required only for Choose Existing; Create New uses the read-only Account Name.
+  const missingAccount = accountMode === 'existing' && !account;
+  // The contact needs a last name; without one the pill would show only a salutation or first name.
+  const contactName = lead.LastName ? [lead.Salutation, lead.FirstName, lead.LastName].filter(Boolean).join(' ') : '';
+  const searchError = submitted && missingAccount;
 
   const convert = useMutation({
     mutationFn: () =>
@@ -136,8 +155,11 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
             type="button"
             className="slds-button slds-button_brand"
             data-testid="convert-submit"
-            disabled={convert.isPending || (accountMode === 'existing' && !account)}
-            onClick={() => convert.mutate()}
+            disabled={convert.isPending}
+            onClick={() => {
+              setSubmitted(true);
+              if (!missingAccount) convert.mutate();
+            }}
           >
             Convert
           </button>
@@ -152,19 +174,18 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
           <>
             <Radio id="account-new" name="account" label="Create New Account" checked={accountMode === 'new'} onChange={() => setAccountMode('new')} />
             <div className="convert-box">
-              <label className="slds-form-element__label" htmlFor="convert-account-name">
-                <abbr className="slds-required" title="required">
-                  *{' '}
-                </abbr>
+              <span className="slds-form-element__label">
+                {accountMode === 'new' && (
+                  <abbr className="slds-required" title="required" data-testid="account-name-required">
+                    *{' '}
+                  </abbr>
+                )}
                 Account Name
-              </label>
-              <input
-                id="convert-account-name"
-                className="slds-input"
-                value={company}
-                readOnly
-                title="The new account is named after the lead's Company"
-              />
+              </span>
+              {/* Not editable: the new account takes the lead's Company, so it is shown as text, not an input. */}
+              <p className="convert-static" id="convert-account-name" data-testid="convert-account-name" title="The new account is named after the lead's Company">
+                {company}
+              </p>
             </div>
           </>
         }
@@ -177,14 +198,21 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
               checked={accountMode === 'existing'}
               onChange={() => setAccountMode('existing')}
             />
-            <div className="convert-box convert-box_plain">
-              <span className="slds-form-element__label">
-                <abbr className="slds-required" title="required">
-                  *{' '}
-                </abbr>
+            <div className={`convert-box convert-box_plain slds-form-element ${searchError ? 'slds-has-error' : ''}`}>
+              <label className="slds-form-element__label" htmlFor="convert-account">
+                {accountMode === 'existing' && (
+                  <abbr className="slds-required" title="required" data-testid="account-search-required">
+                    *{' '}
+                  </abbr>
+                )}
                 Account Search
-              </span>
-              <Lookup id="convert-account" targets={['Account']} value={account} onChange={chooseAccount} />
+              </label>
+              <Lookup id="convert-account" targets={['Account']} value={account} onChange={chooseAccount} invalid={searchError} />
+              {searchError && (
+                <div className="slds-form-element__help" data-testid="field-error-convert-account">
+                  Complete this field.
+                </div>
+              )}
               <div className="convert-matches" data-testid="account-matches">
                 <p className="slds-text-color_weak">
                   {matches.data ? `${formatNumber(matches.data.totalSize)} Account Match${matches.data.totalSize === 1 ? '' : 'es'}` : 'Searching…'}
@@ -210,18 +238,25 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
         left={
           <>
             <Radio id="contact-new" name="contact" label="Create New Contact" checked />
-            <span className="convert-pill" data-testid="convert-contact-name">
-              {String(lead.Name ?? '')}
-            </span>
+            {contactName ? (
+              <span className="convert-pill" data-testid="convert-contact-name">
+                {contactName}
+              </span>
+            ) : (
+              <p className="convert-static convert-static_empty" data-testid="convert-contact-name">
+                This lead has no last name. Add one to the lead before converting.
+              </p>
+            )}
           </>
         }
         right={
           <>
-            <Radio id="contact-existing" name="contact" label="Choose Existing Contact" checked={false} disabled />
-            <p className="convert-disabled" title={STUB_TEXT}>
-              Choosing an existing contact: {STUB_TEXT}
-              <StubBadge />
-            </p>
+            <UnsupportedChoice
+              id="contact-existing"
+              name="contact"
+              label="Choose Existing Contact"
+              feature="Converting into an existing contact"
+            />
           </>
         }
       />
@@ -250,11 +285,12 @@ export function ConvertLeadModal({ lead, onClose }: { lead: SRecord; onClose(): 
         }
         right={
           <>
-            <Radio id="opportunity-existing" name="opportunity" label="Choose Existing Opportunity" checked={false} disabled />
-            <p className="convert-disabled" title={STUB_TEXT}>
-              Choosing an existing opportunity: {STUB_TEXT}
-              <StubBadge />
-            </p>
+            <UnsupportedChoice
+              id="opportunity-existing"
+              name="opportunity"
+              label="Choose Existing Opportunity"
+              feature="Converting into an existing opportunity"
+            />
           </>
         }
       />

@@ -65,18 +65,17 @@ export const LAYOUTS: Record<Exclude<ObjectName, 'User' | 'OpportunityContactRol
       owner,
     ],
     defaultSort: 'Name',
-    highlights: [{ field: 'Title' }, { field: 'Company' }, { field: 'Phone' }, { field: 'Email' }, owner],
+    // The Lightning lead page has no highlights row: the name and actions, then the Path.
+    highlights: [],
+    // Sections, order and fields as on a Lightning lead record page (inspected in a real org).
     sections: [
       {
-        title: 'Lead Information',
-        fields: [
-          'Salutation', 'FirstName', 'LastName', 'Company', 'Title', 'Email', 'Phone', 'MobilePhone', 'Website',
-          'Status', 'Rating', 'LeadSource', 'Industry', 'AnnualRevenue', 'NumberOfEmployees', 'OwnerId',
-        ],
+        title: 'About',
+        fields: ['Status', 'Salutation', 'FirstName', 'LastName', 'Company', 'Title', 'Website', 'Description', 'OwnerId', 'Rating'],
       },
-      { title: 'Address Information', fields: ['Street', 'City', 'State', 'PostalCode', 'Country'] },
-      { title: 'Additional Information', fields: ['Description'] },
-      SYSTEM,
+      { title: 'Get in Touch', fields: ['Phone', 'Email', 'Street', 'City', 'State', 'PostalCode', 'Country'] },
+      { title: 'Segment', fields: ['NumberOfEmployees', 'AnnualRevenue', 'LeadSource', 'Industry'] },
+      { ...SYSTEM, title: 'History' },
     ],
     related: [],
     activityField: 'WhoId',
@@ -199,7 +198,7 @@ export const LAYOUTS: Record<Exclude<ObjectName, 'User' | 'OpportunityContactRol
     defaultSort: 'ActivityDate',
     highlights: [{ field: 'ActivityDate' }, { field: 'Status' }, { field: 'Priority' }, { ...owner, label: 'Assigned To' }],
     sections: [
-      { title: 'Task Information', fields: ['Subject', 'ActivityDate', 'Status', 'Priority', 'WhoId', 'WhatId', 'OwnerId', 'TaskSubtype'] },
+      { title: 'Task Information', fields: ['Subject', 'ActivityDate', 'Status', 'Priority', 'Type', 'WhoId', 'WhatId', 'OwnerId', 'TaskSubtype'] },
       { title: 'Description Information', fields: ['Description'] },
       SYSTEM,
     ],

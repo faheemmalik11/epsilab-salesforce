@@ -72,8 +72,6 @@ test('L1-L5: a lead is created, worked, converted, progressed and Closed Won in 
   await selectPathStep(page, 'Needs Analysis');
   await expect(page.getByTestId('detail-StageName')).toHaveText('Needs Analysis');
   await expect(page.getByTestId('detail-Probability')).toHaveText('20%');
-
-  await page.getByTestId('tab-related').click();
   await expect(page.getByTestId('related-OpportunityContactRole')).toContainText('Contact Roles (1)');
   await restCreate(api, 'Contact', { LastName: 'Backus', AccountId: lead.ConvertedAccountId });
   await page.getByTestId('related-new-OpportunityContactRole').click();
@@ -89,8 +87,6 @@ test('L1-L5: a lead is created, worked, converted, progressed and Closed Won in 
   await page.locator('#task-due').fill('2028-11-20');
   await page.getByTestId('activity-save').click();
   await expect(page.getByTestId('timeline-item').filter({ hasText: 'Send proposal' })).toBeVisible();
-
-  await page.getByTestId('tab-details').click();
   await page.getByTestId('edit-record').click();
   await fill(page, 'NextStep', 'Sign contract');
   await saveModal(page);
@@ -182,8 +178,6 @@ test('L6: the direct path, Account then Contact then Opportunity, with no lead',
   await saveModal(page);
   await expect(page.getByTestId('record-title')).toHaveText('Direct Path Industries');
   const accountId = recordId(page);
-
-  await page.getByTestId('tab-related').click();
   await page.getByTestId('related-new-Contact').click();
   await expect(page.getByTestId('field-AccountId-pill')).toContainText('Direct Path Industries');
   await fill(page, 'FirstName', 'Dana');

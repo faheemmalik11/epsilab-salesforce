@@ -72,7 +72,7 @@ test('the list view picker switches to My Leads and marks unsupported views as s
   await page.getByTestId('list-view-picker').click();
   const menu = page.getByRole('menu');
   await expect(menu.getByText('Recently Viewed')).toBeVisible();
-  await expect(menu.getByTestId('stub-badge')).toHaveCount(2);
+  await expect(menu.getByTestId('scope-label')).toHaveCount(2);
   await menu.getByText('My Leads').click();
   await expect(page.getByTestId('list-view-name')).toHaveText('My Leads');
   await expect(page.getByTestId('list-meta')).toContainText('0 items');

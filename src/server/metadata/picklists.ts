@@ -142,6 +142,9 @@ export const TASK_PRIORITY: Picklist = {
   values: values(['High', 'Normal', 'Low'], 'Normal'),
 };
 
+/** The standard Task Type picklist (unrestricted, as in Salesforce, where orgs add their own values). */
+export const TASK_TYPE: Picklist = { restricted: false, values: values(['Call', 'Email', 'Meeting', 'Other']) };
+
 export const TASK_SUBTYPE: Picklist = { restricted: true, values: values(['Task', 'Call', 'Email'], 'Task') };
 
 export function defaultValueOf(picklist: Picklist): string | undefined {

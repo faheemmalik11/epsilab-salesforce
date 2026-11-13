@@ -45,7 +45,7 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 
 ## Stubbed
 
-Each stub is visibly marked in the UI with a **Stub** badge or "Not available in this trial".
+Each stub stays visible, is disabled, and is marked "Not in scope" (a small label, or a tooltip where a label would crowd the control). `FEATURES.md` lists them all.
 
 | Stub | Reason |
 |---|---|
@@ -65,6 +65,9 @@ Each stub is visibly marked in the UI with a **Stub** badge or "Not available in
 |---|---|
 | Converting a lead into an existing contact | The brief says conversion "creates a Contact"; the Convert dialog marks it as a stub |
 | Renaming the new account in the Convert dialog | The convert API names the account after the lead's Company, as Salesforce does by default; the field is shown read-only |
+| App sidebar (Home, Contacts, Accounts, Sales working; Service, Marketing, Commerce, Your Account and Automation disabled) | Requested to match the real org. The brief's Seller Home screenshot has no sidebar, so this is a deliberate addition beside the Sales navigation, which is kept. Icons are SLDS glyphs, not Salesforce's app artwork |
+| Record pages: details, activity and related lists in equal columns, with no Details/Related tabs | As on a Lightning record page in the real org. The org's third-column panels on leads (People Score, Consent Status, AI Summary, duplicates, Files) are not in the brief, so on leads the activity column takes that width instead of placeholder panels |
+| Lead details in About, Get in Touch, Segment and History, as in the real org | Uses existing fields only. Mobile is no longer shown on the lead page or form, matching the org's sections; it stays available through REST and MCP |
 | Mass actions on selected rows | Not needed by the brief's workflow; list checkboxes only count the selection |
 | Inline edit of lookups, owners, long text and compound names in list cells | They need the full form (Owner uses Change Owner), as in Lightning |
 | Tasks split view (list on the left, task on the right) | Skipped for Phase 6b by agreement; Tasks keeps the standard list view and record page |
@@ -102,6 +105,10 @@ Each one is recorded with its source in `docs/reference/`.
 | Referential integrity is checked in the service layer, not with SQLite foreign keys | Task.WhoId and Task.WhatId are polymorphic, and the service returns Salesforce-style errors |
 | Name on Lead, Contact and User is stored, and kept in sync by the service layer | List views sort and search by it without computing it per row |
 | List sorting on text is case-insensitive (NOCASE) | Salesforce list views sort case-insensitively |
+| `eq`, `ne` and `in` filters ignore case on text, picklist, email, phone, URL and text area fields; IDs, references, numbers, dates and booleans compare exactly | SOQL compares text case-insensitively, so `Rating = 'hot'` finds the 7,111 Hot leads. SQLite's NOCASE folds ASCII only, and all seed and picklist values are ASCII |
+| Task has the standard `Type` picklist (Call, Email, Meeting, Other; unrestricted) beside `TaskSubtype`; Log a Call sets both to Call | The brief asks for standard field names; generated tasks use Call, Email, Meeting (demos and reviews) and Other |
+| A request body that is empty counts as no body, whatever its Content-Type | Many clients send `Content-Type: application/json` on a body-less DELETE; routes that need a body still return `JSON_PARSER_ERROR` |
+| Lead conversion atomicity is verified at two failure points reachable through ordinary input: the Contact step (a lead with no last name) and the Opportunity step (a 150-character Company, too long for the default opportunity name), after the Account and Contact were written | No test-only failure hooks are needed; the contact role step and the final lead update cannot be made to fail through public input, so they are covered only by the shared transaction, not by a test |
 | Object icons are circles in the standard SLDS colours, except Lead, which uses its Cosmos theme colour #06A59A | Measured in the real org (object theme info); the other objects match the sprite colours |
 | Recent Records shows the most recently modified leads, accounts, contacts and opportunities, newest Id first on ties | There is no view history; with the fixed test clock many records share a timestamp |
 | Today's Tasks offers Today's, Overdue and All Open filters, filtering the user's open tasks by due date in the browser | The query API compares by equality only; these three cover the card's purpose |
@@ -120,14 +127,14 @@ Each one is recorded with its source in `docs/reference/`.
 | Conversion fails with `STRING_TOO_LONG` if the default opportunity name (the Company) exceeds the 120-character limit | Salesforce's documentation doesn't say it truncates; the caller can pass a shorter opportunityName |
 | The runtime clock starts at `CLOCK` and advances with real time (`offset` mode); tests use `fixed` mode | Records get distinct, realistic timestamps while dates stay anchored to the seed's timeline |
 | Last Activity dates are not updated when tasks are logged | Not needed by the brief's workflow; listed as read-only behaviour |
-| Some documented standard fields are not modelled: Account AccountNumber, Site, TickerSymbol, Ownership; Opportunity ContactId, IsPrivate; Task Type, CallType, CallDurationInSeconds | None is needed by the workflow or the seed; adding one later is a metadata change |
+| Some documented standard fields are not modelled: Account AccountNumber, Site, TickerSymbol, Ownership; Opportunity ContactId, IsPrivate; Task CallType, CallDurationInSeconds | None is needed by the workflow or the seed; adding one later is a metadata change |
 | Two seed leads with a blank Last Name are imported unchanged | The brief needs exactly 21,628 leads and the seed README says to keep the mess; Last Name is still required when a user saves them |
 | User audit references to a name that is not a seed user ("Tracy Hart") are stored as null and reported at build | The seed doesn't contain that user, so there's no ID to point at |
 | Seed user timestamps (`MM/DD/YYYY, hh:mm AM`) are read as UTC | The export doesn't say which time zone they're in |
 | The importer refuses a database that already holds seed data; rebuilding is how to re-import | Re-running never duplicates rows; two builds from the same seed are byte-identical |
 | The Phase 4 generated set is small (5 accounts, 10 contacts, 5 opportunities, 5 contact roles, 8 tasks) | It exists so the lifecycle can attach to existing accounts; volume and realistic mess come in Phase 7, the brief's lowest priority |
 | Generated accounts use the names of companies shared by several seed leads, and contacts reuse those leads' (pseudonymized) names | Gives the "attach to an existing account" conversion path realistic matches |
-| Generated data never creates, edits or converts a lead, and adds no tasks to seed leads | Keeps the 21,628 and 7,111 counts exact and the seed rows untouched |
+| Generated data never creates, edits or converts a lead; it does add tasks that reference seed leads (3,828 tasks on 1,800 leads) | Keeps the 21,628 and 7,111 counts exact and the seed rows untouched: a task never writes to the lead row (see the Phase 7 row above) |
 | The mutation log is emptied at the end of the build | The baseline has no history; the log shows changes since the last build or reset |
 | The acting user is the `X-User-Id` header (REST) or an `actingUserId` argument (MCP), defaulting to `DEFAULT_USER_ID` | No sessions are needed, and MCP is stateless |
 | Users are read-only as an object: create, edit and delete return `INSUFFICIENT_ACCESS_OR_READONLY` | Users are seeded only; the brief puts user management out of scope |

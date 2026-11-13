@@ -100,7 +100,6 @@ for (const width of [1280, 1440, 1854]) {
       await check('Delete Lead');
       const opp = (await (await api.post('/api/query', { data: { object: 'Opportunity', where: [{ field: 'IsClosed', op: 'eq', value: false }], limit: 1 } })).json()).records[0];
       await page.goto(`/lightning/r/Opportunity/${opp.Id}/view`);
-      await page.getByTestId('tab-related').click();
       await page.getByTestId('related-new-OpportunityContactRole').click();
       await check('Add Contact Roles');
       await page.getByTestId('path-step-__closed').click();

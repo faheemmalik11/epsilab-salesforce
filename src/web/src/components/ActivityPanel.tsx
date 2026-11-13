@@ -6,11 +6,14 @@ import { refreshRecords, useClock } from '../api/hooks';
 import type { SRecord } from '../api/types';
 import { formatValue } from '../lib/format';
 import { recordTitle } from '../lib/layouts';
-import { groupTimeline } from '../lib/timeline';
+import { DEFAULT_ACTIVITY_FILTERS, describeFilters, filterActivities, groupTimeline, type ActivityFilters, type FilterableTask } from '../lib/timeline';
+import { useActingUser } from '../context/ActingUser';
+import { Menu } from './Menu';
+import { Spinner } from './Spinner';
 import { recordUrl } from './FieldOutput';
 import { ButtonIcon, Icon } from './Icon';
 import { PageError } from './PageError';
-import { STUB_TEXT, StubBadge } from './Stub';
+import { scopeTitle } from './Stub';
 import { useToast } from './Toast';
 
 export type Composer = 'call' | 'task';
@@ -65,8 +68,7 @@ function TimelineItem({ task, overdue }: { task: SRecord; overdue: boolean }) {
   );
 }
 
-function Timeline({ tasks, today }: { tasks: SRecord[]; today: string }) {
-  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+function Timeline({ tasks, today, collapsed, onToggle }: { tasks: SRecord[]; today: string; collapsed: Set<string>; onToggle(key: string): void }) {
   const groups = groupTimeline(tasks, today);
   return (
     <div className="activity-timeline" data-testid="activity-timeline">
@@ -74,23 +76,16 @@ function Timeline({ tasks, today }: { tasks: SRecord[]; today: string }) {
         const closed = collapsed.has(group.key);
         return (
           <section key={group.key} className="activity-group" data-testid={`timeline-group-${group.key}`}>
-            <button
-              type="button"
-              className="activity-group__header"
-              aria-expanded={!closed}
-              onClick={() => {
-                const next = new Set(collapsed);
-                if (closed) next.delete(group.key);
-                else next.add(group.key);
-                setCollapsed(next);
-              }}
-            >
+            <button type="button" className="activity-group__header" aria-expanded={!closed} onClick={() => onToggle(group.key)}>
               <ButtonIcon name={closed ? 'chevronright' : 'chevrondown'} />
               <span>{group.title}</span>
             </button>
             {!closed &&
               (group.tasks.length === 0 ? (
-                <p className="activity-group__empty">{group.empty}</p>
+                <div className="activity-group__empty" data-testid="activity-empty">
+                  <p>No activities to show.</p>
+                  <p>Get started by logging a call, scheduling a task, and more.</p>
+                </div>
               ) : (
                 <ul>
                   {group.tasks.map((task) => (
@@ -101,6 +96,60 @@ function Timeline({ tasks, today }: { tasks: SRecord[]; today: string }) {
           </section>
         );
       })}
+    </div>
+  );
+}
+
+/** The filter summary, its settings menu, and Refresh and Expand All, as at the top of a Lightning timeline. */
+function ActivityToolbar({
+  filters,
+  onFilters,
+  onRefresh,
+  allExpanded,
+  onExpandAll,
+}: {
+  filters: ActivityFilters;
+  onFilters(filters: ActivityFilters): void;
+  onRefresh(): void;
+  allExpanded: boolean;
+  onExpandAll(): void;
+}) {
+  const option = <K extends keyof ActivityFilters>(key: K, value: ActivityFilters[K], label: string) => ({
+    id: `${key}-${value}`,
+    label,
+    checked: filters[key] === value,
+    testId: `activity-filter-${key}-${value}`,
+    onSelect: () => onFilters({ ...filters, [key]: value }),
+  });
+  return (
+    <div className="activity-toolbar">
+      <div className="activity-toolbar__filters">
+        <span data-testid="activity-filter-summary">Filters: {describeFilters(filters)}</span>
+        <Menu
+          align="right"
+          testId="activity-filter-menu"
+          sections={[
+            { header: 'Date range', items: [option('range', 'all', 'All time'), option('range', '2months', 'Within 2 months'), option('range', '7days', 'Last 7 days')] },
+            { header: 'Activities to show', items: [option('scope', 'all', 'All activities'), option('scope', 'mine', 'My activities')] },
+            { header: 'Activity types', items: [option('type', 'all', 'All types'), option('type', 'Call', 'Calls'), option('type', 'Email', 'Emails'), option('type', 'Task', 'Tasks')] },
+          ]}
+          trigger={(props) => (
+            <button {...props} type="button" className="slds-button slds-button_icon slds-button_icon-border-filled activity-toolbar__settings" title="Timeline settings" data-testid="activity-filter-button">
+              <ButtonIcon name="settings" />
+              <span className="slds-assistive-text">Timeline settings</span>
+            </button>
+          )}
+        />
+      </div>
+      <div className="activity-toolbar__links">
+        <button type="button" className="slds-button activity-link" data-testid="activity-refresh" onClick={onRefresh}>
+          Refresh
+        </button>
+        <span aria-hidden="true">•</span>
+        <button type="button" className="slds-button activity-link" data-testid="activity-expand" onClick={onExpandAll}>
+          {allExpanded ? 'Collapse All' : 'Expand All'}
+        </button>
+      </div>
     </div>
   );
 }
@@ -207,6 +256,15 @@ function DockedComposer({ record, link, composer, onClose }: { record: SRecord; 
 export function ActivityPanel({ record, link, readOnly, composer, onComposerChange }: ActivityPanelProps) {
   const tasks = useTasks(record, link);
   const clock = useClock();
+  const { current } = useActingUser();
+  const [filters, setFilters] = useState<ActivityFilters>(DEFAULT_ACTIVITY_FILTERS);
+  const [collapsed, setCollapsed] = useState<Set<string>>(new Set());
+  const today = clock.data?.today ?? '';
+  const all = tasks.data ?? [];
+  const shown = filterActivities(all as (SRecord & FilterableTask)[], filters, today, current?.Id ?? null);
+  const groupKeys = groupTimeline(shown, today).map((g) => g.key);
+  const allExpanded = groupKeys.every((key) => !collapsed.has(key));
+  const hidden = all.length - shown.length;
   const actions: { id: Composer | 'email' | 'event'; label: string; icon: string; stub?: boolean }[] = [
     { id: 'email', label: 'Email', icon: 'email', stub: true },
     { id: 'event', label: 'New Event', icon: 'event', stub: true },
@@ -216,36 +274,57 @@ export function ActivityPanel({ record, link, readOnly, composer, onComposerChan
 
   return (
     <article className="slds-card activity-panel" data-testid="activity-panel">
-      <div className="slds-card__header">
-        <h2 className="slds-card__header-title">Activity</h2>
-      </div>
+      <h2 className="slds-assistive-text">Activity</h2>
       <div className="slds-card__body slds-card__body_inner">
         {!readOnly && (
-          <>
-            <div className="activity-actions">
-              {actions.map((action) => (
-                <button
-                  key={action.id}
-                  type="button"
-                  className={`activity-action ${composer === action.id ? 'activity-action_active' : ''}`}
-                  disabled={action.stub}
-                  aria-pressed={composer === action.id}
-                  title={action.stub ? `${action.label}: ${STUB_TEXT}` : action.label}
-                  data-testid={`composer-${action.id}`}
-                  onClick={() => !action.stub && onComposerChange(action.id as Composer)}
-                >
-                  <Icon name={action.icon} size="small" />
-                  <span className="slds-assistive-text">{action.stub ? `${action.label}: ${STUB_TEXT}` : action.label}</span>
-                </button>
-              ))}
-            </div>
-            <p className="activity-stub-note">
-              Email and New Event: {STUB_TEXT}
-              <StubBadge />
-            </p>
-          </>
+          <div className="activity-actions">
+            {actions.map((action) => (
+              <button
+                key={action.id}
+                type="button"
+                className="activity-action"
+                disabled={action.stub}
+                aria-pressed={composer === action.id}
+                title={action.stub ? scopeTitle(action.label) : action.label}
+                data-testid={`composer-${action.id}`}
+                onClick={() => !action.stub && onComposerChange(action.id as Composer)}
+              >
+                <Icon name={action.icon} size="small" />
+                <span className="slds-assistive-text">{action.stub ? scopeTitle(action.label) : action.label}</span>
+              </button>
+            ))}
+          </div>
         )}
-        <Timeline tasks={tasks.data ?? []} today={clock.data?.today ?? ''} />
+        <ActivityToolbar
+          filters={filters}
+          onFilters={setFilters}
+          onRefresh={() => void tasks.refetch()}
+          allExpanded={allExpanded}
+          onExpandAll={() => setCollapsed(allExpanded ? new Set(groupKeys) : new Set())}
+        />
+        {tasks.isFetching && <Spinner size="small" />}
+        <Timeline
+          tasks={shown}
+          today={today}
+          collapsed={collapsed}
+          onToggle={(key) => {
+            const next = new Set(collapsed);
+            if (next.has(key)) next.delete(key);
+            else next.add(key);
+            setCollapsed(next);
+          }}
+        />
+        {hidden > 0 && (
+          <div className="activity-hidden" data-testid="activity-hidden">
+            <p className="activity-hidden__note">
+              <ButtonIcon name="info" />
+              To change what's shown, try changing your filters.
+            </p>
+            <button type="button" className="slds-button slds-button_brand" data-testid="activity-show-all" onClick={() => setFilters({ range: 'all', scope: 'all', type: 'all' })}>
+              Show All Activities
+            </button>
+          </div>
+        )}
       </div>
       {composer && !readOnly && (
         <DockedComposer key={composer} record={record} link={link} composer={composer} onClose={() => onComposerChange(null)} />

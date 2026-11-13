@@ -243,6 +243,9 @@ function planDeal(gen: Gen, accountDays: number, tier: number, existing: boolean
 
 // ---------- activity ----------
 
+/** Task Type for completed activity whose subtype is a plain task: demos and reviews are meetings. */
+const TASK_TYPE_BY_SUBJECT: Record<string, string> = { 'Product demo': 'Meeting', 'Technical review': 'Meeting' };
+
 type TaskLink = { WhoId?: string | null; WhatId?: string | null };
 
 function completedTask(
@@ -255,6 +258,7 @@ function completedTask(
   create(gen, ms, owner, 'Task', {
     Subject: subject,
     TaskSubtype: subtype,
+    Type: TASK_TYPE_BY_SUBJECT[subject] ?? (subtype === 'Task' ? 'Other' : subtype),
     Status: 'Completed',
     Priority: 'Normal',
     ActivityDate: isoDate(ms),
@@ -283,6 +287,7 @@ function openTask(
   create(gen, created, owner, 'Task', {
     Subject: subject,
     TaskSubtype: 'Task',
+    Type: 'Other',
     Status: rng.chance(0.2) ? 'In Progress' : 'Not Started',
     Priority: priority,
     ActivityDate: isoDate(due),
@@ -364,6 +369,7 @@ function writeDeal(gen: Gen, plan: DealPlan, accountId: string, owner: string, c
       create(gen, touchedMs, owner, 'Task', {
         Subject: plan.nextStep ?? 'Follow up',
         TaskSubtype: 'Task',
+        Type: 'Other',
         Status: 'Not Started',
         Priority: 'Normal',
         ActivityDate: isoDate(Math.max(due, touchedMs)),

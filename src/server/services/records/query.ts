@@ -49,8 +49,13 @@ function storedValue(field: FieldDef, raw: unknown, errors: ApiError[]): string 
   return toColumnValue(field, coerced.value);
 }
 
+/** Field types whose equality filters ignore case, as SOQL's do. IDs and references stay exact. */
+const CASE_INSENSITIVE_TYPES = new Set(['string', 'picklist', 'email', 'phone', 'url', 'textarea']);
+
 function conditionSql(field: FieldDef, condition: Condition, params: unknown[], errors: ApiError[]): string {
   const column = `"${field.name}"`;
+  // SQLite's NOCASE folds ASCII letters only; every seed and picklist value is ASCII.
+  const collate = CASE_INSENSITIVE_TYPES.has(field.type) ? ' COLLATE NOCASE' : '';
   switch (condition.op) {
     case 'isNull':
       return `${column} IS NULL`;
@@ -58,15 +63,15 @@ function conditionSql(field: FieldDef, condition: Condition, params: unknown[], 
       return `${column} IS NOT NULL`;
     case 'eq':
       params.push(storedValue(field, condition.value, errors));
-      return `${column} = ?`;
+      return `${column} = ?${collate}`;
     case 'ne':
       params.push(storedValue(field, condition.value, errors));
-      return `(${column} IS NULL OR ${column} <> ?)`;
+      return `(${column} IS NULL OR ${column} <> ?${collate})`;
     case 'in': {
       const list = Array.isArray(condition.value) ? condition.value : [];
       if (list.length === 0) return '0';
       list.forEach((v) => params.push(storedValue(field, v, errors)));
-      return `${column} IN (${list.map(() => '?').join(', ')})`;
+      return `${column}${collate} IN (${list.map(() => '?').join(', ')})`;
     }
     case 'contains': {
       const text = String(condition.value ?? '').replace(/[\\%_]/g, (c) => `\\${c}`);

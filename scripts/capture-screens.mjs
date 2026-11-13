@@ -61,6 +61,8 @@ try {
   const page = await browser.newPage({ viewport: { width, height } });
   const shot = async (name) => {
     await page.waitForLoadState('networkidle');
+    // Let dialog and backdrop fade-ins (0.1s and 0.4s) finish.
+    await page.waitForTimeout(500);
     await page.screenshot({ path: path.join(out, `${name}.png`) });
   };
 
@@ -85,7 +87,6 @@ try {
   await page.goto(`${base}/lightning/r/Opportunity/${opp.Id}/view`);
   await page.getByTestId('path').waitFor();
   await shot('07-opportunity-record');
-  await page.getByTestId('tab-related').click();
   await page.getByTestId('related-OpportunityContactRole').waitFor();
   await shot('08-opportunity-contact-roles');
   await page.goto(`${base}/lightning/r/Account/${account.Id}/view`);

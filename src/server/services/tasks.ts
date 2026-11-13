@@ -16,6 +16,7 @@ export function logCall(ctx: ServiceContext, input: LogCallInput): SObject {
   return createRecord(ctx, 'Task', {
     Subject: input.subject ?? 'Call',
     TaskSubtype: 'Call',
+    Type: 'Call',
     Status: 'Completed',
     ActivityDate: input.activityDate ?? ctx.clock.today(),
     WhoId: input.whoId ?? null,

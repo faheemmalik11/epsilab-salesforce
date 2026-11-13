@@ -122,12 +122,26 @@ function Highlights({ layout, record, fields }: { layout: Layout; record: SRecor
   );
 }
 
-const NAME_PARTS = ['Salutation', 'FirstName', 'LastName'];
+/** Fields Lightning shows as one row: the Name and Address compounds, and "Created By: user, date". */
+interface FieldGroup {
+  key: string;
+  label: string;
+  parts: string[];
+  /** Read-only audit pairs: user, then date. */
+  audit?: boolean;
+}
 
-function DetailRow({ label, testId, onEdit, wide, edited, children }: { label: string; testId?: string; onEdit?(): void; wide?: boolean; edited?: boolean; children: ReactNode }) {
+const FIELD_GROUPS: FieldGroup[] = [
+  { key: 'Name', label: 'Name', parts: ['Salutation', 'FirstName', 'LastName'] },
+  { key: 'Address', label: 'Address', parts: ['Street', 'City', 'State', 'PostalCode', 'Country'] },
+  { key: 'CreatedBy', label: 'Created By', parts: ['CreatedById', 'CreatedDate'], audit: true },
+  { key: 'LastModifiedBy', label: 'Last Modified By', parts: ['LastModifiedById', 'LastModifiedDate'], audit: true },
+];
+
+function DetailRow({ label, testId, onEdit, wide, children }: { label: string; testId?: string; onEdit?(): void; wide: boolean; children: ReactNode }) {
   return (
     <div className={`slds-col slds-p-horizontal_small ${wide ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
-      <div className={`slds-form-element slds-form-element_readonly slds-form-element_stacked detail-row ${edited ? 'detail-row_edited' : ''}`}>
+      <div className="slds-form-element slds-form-element_readonly slds-form-element_stacked detail-row">
         <span className="slds-form-element__label">{label}</span>
         <div className="slds-form-element__control">
           <div className="slds-form-element__static" data-testid={testId}>
@@ -145,20 +159,28 @@ function DetailRow({ label, testId, onEdit, wide, edited, children }: { label: s
   );
 }
 
-/** The run of name parts in a section, collapsed into one entry for the Name compound field. */
-function sectionEntries(names: string[]): (string | string[])[] {
-  const parts = names.filter((n) => NAME_PARTS.includes(n));
-  if (parts.length < 2) return names;
-  const first = names.indexOf(parts[0]!);
-  const rest = names.filter((n) => !NAME_PARTS.includes(n));
-  return [...rest.slice(0, first), parts, ...rest.slice(first)];
+/** A section's fields, with each group's parts collapsed into one entry where the first part was. */
+function sectionEntries(names: string[]): (string | FieldGroup)[] {
+  const entries: (string | FieldGroup)[] = [];
+  for (const name of names) {
+    const group = FIELD_GROUPS.find((g) => g.parts.includes(name) && g.parts.filter((p) => names.includes(p)).length > 1);
+    if (!group) entries.push(name);
+    else if (!entries.includes(group)) entries.push(group);
+  }
+  return entries;
+}
+
+/** "Street, City, State Postcode, Country" on separate lines, as Lightning shows an address. */
+function formatAddress(record: SRecord): string {
+  const cityLine = [record.City, [record.State, record.PostalCode].filter(Boolean).join(' ')].filter(Boolean).join(', ');
+  return [record.Street, cityLine, record.Country].filter(Boolean).join('\n');
 }
 
 /**
  * Detail sections with Lightning inline edit: a pencil switches the whole panel into edit mode, changed
  * fields are highlighted, and the sticky footer saves only the changed fields through the update API.
  */
-function Details({ layout, label, record, fields, editable }: { layout: Layout; label: string; record: SRecord; fields: Map<string, FieldDescribe>; editable: boolean }) {
+function Details({ layout, label, record, fields, editable, singleColumn }: { layout: Layout; label: string; record: SRecord; fields: Map<string, FieldDescribe>; editable: boolean; singleColumn: boolean }) {
   const queryClient = useQueryClient();
   const toast = useToast();
   const [values, setValues] = useState<Record<string, FormValue> | null>(null);
@@ -212,41 +234,52 @@ function Details({ layout, label, record, fields, editable }: { layout: Layout; 
           </h3>
           <div className="slds-section__content slds-grid slds-wrap">
             {sectionEntries(section.fields.filter((name) => fields.has(name))).map((entry) => {
-              if (Array.isArray(entry)) {
-                const parts = entry.map((n) => fields.get(n)!);
-                if (editing && parts.some(canEdit)) {
+              if (typeof entry !== 'string') {
+                const parts = entry.parts.filter((n) => fields.has(n)).map((n) => fields.get(n)!);
+                if (editing && !entry.audit && parts.some(canEdit)) {
                   return (
-                    <div key="Name" className="slds-col slds-p-horizontal_small slds-size_1-of-2 detail-edit">
+                    <div key={entry.key} className={`slds-col slds-p-horizontal_small detail-edit ${singleColumn ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
                       <fieldset className="slds-form-element slds-form-element_compound">
-                        <legend className="slds-form-element__legend slds-form-element__label">Name</legend>
+                        <legend className="slds-form-element__legend slds-form-element__label">{entry.label}</legend>
                         {parts.filter(canEdit).map(input)}
                       </fieldset>
                     </div>
                   );
                 }
-                const full = entry.map((n) => record[n]).filter(Boolean).join(' ');
+                let value: ReactNode;
+                if (entry.audit) {
+                  const [user, date] = parts;
+                  value = (
+                    <>
+                      <FieldOutput field={user!} record={record} />
+                      {date && record[date.name] ? `, ${formatValue('datetime', record[date.name])}` : ''}
+                    </>
+                  );
+                } else if (entry.key === 'Address') value = <span style={{ whiteSpace: 'pre-line' }}>{formatAddress(record)}</span>;
+                else value = entry.parts.map((n) => record[n]).filter(Boolean).join(' ');
                 return (
-                  <DetailRow key="Name" label="Name" testId="detail-Name" onEdit={editable && parts.some(canEdit) ? () => startEdit('FirstName') : undefined}>
-                    {full}
+                  <DetailRow
+                    key={entry.key}
+                    label={entry.label}
+                    testId={`detail-${entry.key}`}
+                    wide={singleColumn}
+                    onEdit={editable && !entry.audit && parts.some(canEdit) ? () => startEdit(parts.find(canEdit)!.name) : undefined}
+                  >
+                    {value}
                   </DetailRow>
                 );
               }
               const field = fields.get(entry)!;
+              const wide = singleColumn || field.type === 'textarea';
               if (editing && canEdit(field)) {
                 return (
-                  <div key={entry} className={`slds-col slds-p-horizontal_small detail-edit ${field.type === 'textarea' ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
+                  <div key={entry} className={`slds-col slds-p-horizontal_small detail-edit ${wide ? 'slds-size_1-of-1' : 'slds-size_1-of-2'}`}>
                     {input(field)}
                   </div>
                 );
               }
               return (
-                <DetailRow
-                  key={entry}
-                  label={field.label}
-                  testId={`detail-${entry}`}
-                  wide={field.type === 'textarea'}
-                  onEdit={editable && canEdit(field) ? () => startEdit(entry) : undefined}
-                >
+                <DetailRow key={entry} label={field.label} testId={`detail-${entry}`} wide={wide} onEdit={editable && canEdit(field) ? () => startEdit(entry) : undefined}>
                   <FieldOutput field={field} record={record} />
                 </DetailRow>
               );
@@ -285,7 +318,7 @@ function RelatedCard({ list, parent }: { list: RelatedList; parent: SRecord }) {
   const parentRef = { id: parent.Id, name: recordTitle(parent), object: parent.attributes.type };
 
   return (
-    <article className="slds-card slds-card_boundary slds-m-bottom_small" data-testid={`related-${list.object}`}>
+    <article className="slds-card related-card" data-testid={`related-${list.object}`}>
       <div className="slds-card__header slds-grid">
         <header className="slds-media slds-media_center slds-has-flexi-truncate">
           <div className="slds-media__figure">
@@ -356,7 +389,6 @@ export function RecordPage() {
   const describe = useDescribe(object);
   const [editing, setEditing] = useState(false);
   const [converting, setConverting] = useState(false);
-  const [tab, setTab] = useState<'details' | 'related'>('details');
   const [composer, setComposer] = useState<Composer | null>(null);
   const [changingOwner, setChangingOwner] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -396,6 +428,7 @@ export function RecordPage() {
     { id: 'delete', label: 'Delete', testId: 'more-delete', onSelect: () => setDeleting(true) },
   ];
   const hasPath = (object === 'Lead' && !converted) || (object === 'Opportunity' && !!stageField);
+  const columnCount = 1 + (layout.activityField ? 1 : 0) + (layout.related.length > 0 ? 1 : 0);
 
   return (
     <div className="record-page" data-testid="record-page">
@@ -447,41 +480,30 @@ export function RecordPage() {
         </div>
       )}
 
-      <div className="record-columns">
-        <div className="record-panel record-columns__main">
-          <div className="slds-tabs_default">
-            <ul className="slds-tabs_default__nav" role="tablist">
-              {(['details', 'related'] as const)
-                .filter((t) => t === 'details' || layout.related.length > 0)
-                .map((t) => (
-                  <li key={t} className={`slds-tabs_default__item ${tab === t ? 'slds-is-active' : ''}`} role="presentation">
-                    <a
-                      className="slds-tabs_default__link"
-                      href="#"
-                      role="tab"
-                      data-testid={`tab-${t}`}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        setTab(t);
-                      }}
-                    >
-                      {t === 'details' ? 'Details' : 'Related'}
-                    </a>
-                  </li>
-                ))}
-            </ul>
-            <div className="slds-tabs_default__content slds-show" role="tabpanel">
-              {tab === 'details' ? (
-                <Details key={data.Id} layout={layout} label={describe.data.label} record={data} fields={fields} editable={!converted} />
-              ) : (
-                layout.related.map((list) => <RelatedCard key={list.title} list={list} parent={data} />)
-              )}
-            </div>
-          </div>
+      {/* Lightning's record layout: details, then activity, then related lists, in equal columns.
+          Without related lists (leads), activity takes the remaining width rather than an empty panel. */}
+      <div className={`record-columns record-columns_${columnCount}`} data-testid="record-columns">
+        <div className="record-panel record-columns__details" data-testid="record-details">
+          <Details
+            key={data.Id}
+            layout={layout}
+            label={describe.data.label}
+            record={data}
+            fields={fields}
+            editable={!converted}
+            singleColumn={columnCount > 1}
+          />
         </div>
         {layout.activityField && (
-          <div className="record-columns__side">
+          <div className={`record-columns__activity ${layout.related.length === 0 ? 'record-columns__activity_wide' : ''}`}>
             <ActivityPanel record={data} link={layout.activityField} readOnly={converted} composer={composer} onComposerChange={setComposer} />
+          </div>
+        )}
+        {layout.related.length > 0 && (
+          <div className="record-columns__related" data-testid="record-related">
+            {layout.related.map((list) => (
+              <RelatedCard key={list.title} list={list} parent={data} />
+            ))}
           </div>
         )}
       </div>

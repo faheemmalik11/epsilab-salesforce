@@ -11,7 +11,7 @@ import { recordUrl } from '../components/FieldOutput';
 import { ButtonIcon, Icon } from '../components/Icon';
 import { Menu } from '../components/Menu';
 import { useToast } from '../components/Toast';
-import { STUB_TEXT, StubBadge } from '../components/Stub';
+import { ScopeLabel, scopeTitle } from '../components/Stub';
 import { useActingUser } from '../context/ActingUser';
 import { formatValue } from '../lib/format';
 import { LAYOUTS, recordTitle } from '../lib/layouts';
@@ -20,13 +20,13 @@ import { classifyPipeline, pipelineWindowStart, type PipelineTask } from '../lib
 const RECENT_OBJECTS: ObjectName[] = ['Lead', 'Account', 'Contact', 'Opportunity'];
 const PIPELINE_PAGE = 200;
 
-function HomeCard({ title, testId, footer, stub, action, children }: { title: string; testId: string; footer?: ReactNode; stub?: boolean; action?: ReactNode; children: ReactNode }) {
+function HomeCard({ title, testId, footer, stub, action, children }: { title: string; testId: string; footer?: ReactNode; stub?: string; action?: ReactNode; children: ReactNode }) {
   return (
     <article className="slds-card home-card" data-testid={testId}>
       <div className="slds-card__header home-card__header">
         <h2 className="slds-card__header-title">
           {title}
-          {stub && <StubBadge />}
+          {stub && <ScopeLabel feature={stub} />}
         </h2>
         {action}
       </div>
@@ -45,9 +45,9 @@ function EmptyState({ art, text }: { art: string; text: string }) {
   );
 }
 
-function StubButton({ label, brand }: { label: string; brand?: boolean }) {
+function StubButton({ label, feature, brand }: { label: string; feature: string; brand?: boolean }) {
   return (
-    <button type="button" className={`slds-button ${brand ? 'slds-button_brand' : 'slds-button_neutral'}`} disabled title={`${label}: ${STUB_TEXT}`}>
+    <button type="button" className={`slds-button ${brand ? 'slds-button_brand' : 'slds-button_neutral'}`} disabled title={scopeTitle(feature)}>
       {label}
     </button>
   );
@@ -241,7 +241,7 @@ function RecentRecords() {
     },
   });
   return (
-    <HomeCard title="Recent Records" testId="home-recent-records" footer={<StubButton label="View All" />}>
+    <HomeCard title="Recent Records" testId="home-recent-records" footer={<StubButton label="View All" feature="The recently viewed list" />}>
       <ul className="home-list">
         {(recent.data ?? []).map((record: SRecord) => {
           const layout = LAYOUTS[record.attributes.type as keyof typeof LAYOUTS];
@@ -281,20 +281,20 @@ export function HomePage() {
       </div>
       <div className="home-grid">
         <BuildPipeline ownerId={current?.Id} today={today} />
-        <HomeCard title="My Goals" testId="home-goals" stub footer={<StubButton label="Set goals" brand />}>
+        <HomeCard title="My Goals" testId="home-goals" stub="Goals" footer={<StubButton label="Set goals" feature="Goals" brand />}>
           <EmptyState art={goalsArt} text="Set personal weekly or monthly goals for emails, calls, and meetings." />
         </HomeCard>
-        <HomeCard title="Today's Events" testId="home-events" stub footer={<StubButton label="View Calendar" />}>
-          <EmptyState art={eventsArt} text="Events and the calendar are not available in this trial." />
+        <HomeCard title="Today's Events" testId="home-events" stub="Events and the calendar" footer={<StubButton label="View Calendar" feature="The calendar" />}>
+          <EmptyState art={eventsArt} text="Events and the calendar aren't part of this Salesforce clone." />
         </HomeCard>
         <TodaysTasks ownerId={current?.Id} today={today} />
         <RecentRecords />
-        <HomeCard title="Salesblazer" testId="home-salesblazer" stub footer={<StubButton label="Join the Community" />}>
+        <HomeCard title="Salesblazer" testId="home-salesblazer" stub="Salesblazer community content" footer={<StubButton label="Join the Community" feature="The Salesblazer community" />}>
           <div className="home-empty">
             <span className="home-empty__icon">
               <Icon name="knowledge" size="large" />
             </span>
-            <p>Community articles are not available in this trial.</p>
+            <p>Salesblazer community articles aren't part of this Salesforce clone.</p>
           </div>
         </HomeCard>
       </div>
