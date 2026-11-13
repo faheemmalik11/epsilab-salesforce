@@ -1,0 +1,10 @@
+export type { ServiceContext } from './context.js';
+export { ServiceError, type ApiError, type ErrorCode } from './errors.js';
+export { createRecord, deleteRecord, getRecord, updateRecord } from './records/records.js';
+export { queryRecords, type Condition, type QueryOptions, type QueryResult } from './records/query.js';
+export type { FieldValue, SObject } from './records/values.js';
+export { convertLead, type ConvertLeadInput, type ConvertLeadResult } from './leadConvert.js';
+export { logCall, type LogCallInput } from './tasks.js';
+export { listMutations, type MutationEntry } from './mutationLog.js';
+export { listUsers, resolveActingUser, type UserSummary } from './users.js';
+export { getHealth } from './health.js';

@@ -45,3 +45,32 @@ Salesforce Sales Cloud clone built for the Epsilab work trial. Plan: `PLAN.md`. 
 ## Seed data
 - `seed/` is gitignored here. Copy it with `scripts/fetch-seed.sh`, which verifies the sha256 hashes in `seed/manifest.json`.
 - The seed is real pseudonymized company data. Never publish it.
+
+## Project context and source of truth
+
+Before starting any development phase or making a technical decision, review the relevant project documentation.
+
+**Read in this order:**
+
+1. **Original Salesforce Work Trial assessment:** the primary source of truth. Its scope, acceptance criteria, priorities, and deliverables override everything else.
+2. **`docs/REQUIREMENTS.md`:** maps the original requirements to implementation tasks and tests. Use it to track progress and verify completion.
+3. **`PLAN.md`:** the agreed architecture, development phases, and execution order.
+4. **`docs/reference/README.md`:** explains the research sources and how to interpret the reference files.
+5. **Relevant files in `docs/reference/`:** consult them when implementing the related functionality:
+   - `objects-and-fields.md` for data models and relationships.
+   - `lead-seed-mapping.md` for importing seed data.
+   - `picklists.md` for statuses, stages, and picklist values.
+   - `behavior-and-validation.md` for business rules, conversion, and validation.
+   - `gui-surfaces.md` for Lightning UI screens and components.
+
+**Rules:**
+
+- The original assessment always takes priority over research notes and implementation decisions.
+- Reference documents explain Salesforce behavior. They do not introduce new requirements.
+- Do not read every reference file on every task. Read the relevant files before implementing or modifying that area.
+- Before each phase, check its requirements in `docs/REQUIREMENTS.md`.
+- After each phase, update the checklist with actual test results and evidence.
+- If documents conflict, return to the original assessment and resolve the difference.
+- Document assumptions in `TRADEOFFS.md`.
+- Never mark a requirement complete without testing it.
+- Follow the code quality, testing, and Git attribution rules above.
