@@ -41,15 +41,16 @@ export interface ToolResult {
  * A real seeded baseline snapshot (21,628 leads) and a working copy prepared as the app does at
  * start-up, behind the API app on a random local port.
  */
-export async function startHarness(options: { defaultUserId?: string } = {}): Promise<Harness> {
+export async function startHarness(options: { defaultUserId?: string; profile?: string } = {}): Promise<Harness> {
+  const profile = options.profile ?? 'default';
   const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'epsilab-api-'));
   const snapshotDir = path.join(dir, 'snapshots');
   const built = path.join(dir, 'built.db');
-  copyBaseline('default', built);
-  writeSnapshot(built, baselineFile(snapshotDir, 'default'));
+  copyBaseline(profile, built);
+  writeSnapshot(built, baselineFile(snapshotDir, profile));
   fs.rmSync(built);
   const dbFile = path.join(dir, 'app.db');
-  const snapshots = { dir: snapshotDir, profile: 'default' };
+  const snapshots = { dir: snapshotDir, profile };
   prepareWorkingDatabase(snapshots, dbFile);
   const runtime = createRuntime({
     store: new DbStore(dbFile),

@@ -41,6 +41,8 @@ What was built, stubbed or skipped, each with a one-line reason. The brief is th
 | The generator writes through the service layer with a historical clock per record, then deletes its mutation log entries and vacuums | Every save rule holds and dates are realistic. The baseline starts with an empty log and no free pages |
 | A per-connection prepared-statement cache in the service layer | Preparing SQL was a third of the build time; it also makes API writes cheaper. Behaviour is unchanged |
 | Tests share one build of each baseline per run (`tests/globalSetup.ts`) | A build takes several seconds; tests that test building still build their own and compare hashes with the shared one |
+| A GUI reset under the header's settings gear (Environment Controls, labelled as a demo admin control), with a confirmation dialog; it calls the existing `POST /api/admin/reset` | Requested for Phase 8. The reset itself stays the single, tested backend path. A response with `matches: false` is shown as a failure |
+| `scripts/smoke.sh` runs its own compose project (`epsilab-smoke`) on ports 3300/8380 | Automated tests never stop or reset a developer's running stack |
 | Mutation log of every create, update and delete, with actor, clock time and full before/after images | Part of the brief's environment plumbing; a reset clears it with the rest of the database |
 
 ## Stubbed

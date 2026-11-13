@@ -144,6 +144,12 @@ try {
   await page.getByTestId('composer-task').click();
   await page.getByTestId('docked-composer').waitFor();
   await shot('23-docked-composer');
+  await page.getByTestId('composer-close').click();
+  await page.getByTestId('settings-button').click();
+  await shot('24-environment-controls-menu');
+  await page.getByTestId('reset-to-baseline').click();
+  await page.getByRole('dialog', { name: 'Reset Environment?' }).waitFor();
+  await shot('25-reset-environment-dialog');
 
   await browser.close();
   console.log(`Saved screenshots to ${out} (isolated server, data deleted)`);

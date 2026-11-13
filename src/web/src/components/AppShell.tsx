@@ -6,6 +6,7 @@ import { LAYOUTS, TAB_ORDER, recordTitle, type TabObject } from '../lib/layouts'
 import { iconHref } from '../icons';
 import { recordUrl } from './FieldOutput';
 import { ButtonIcon, Icon } from './Icon';
+import { EnvironmentControls } from './EnvironmentControls';
 import { Menu, type MenuSection } from './Menu';
 import { OUTLINE_ICONS } from './SidebarIcons';
 import { RecordForm } from './RecordForm';
@@ -277,7 +278,8 @@ export function AppShell({ children }: { children: ReactNode }) {
               </div>
             </div>
           </div>
-          <div className="slds-global-header__item">
+          <div className="slds-global-header__item header-actions">
+            <EnvironmentControls />
             <UserSwitcher />
           </div>
         </div>

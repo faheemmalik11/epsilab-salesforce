@@ -83,6 +83,15 @@ export interface ConvertResult {
   opportunityId: string | null;
 }
 
+/** The response of POST /api/admin/reset. */
+export interface ResetResult {
+  snapshot: string;
+  sha256: string;
+  matches: boolean;
+  durationMs: number;
+  removedSideFiles: string[];
+}
+
 /** The app clock; every date the GUI treats as "today" comes from here, not the browser. */
 export interface ClockInfo {
   now: string;

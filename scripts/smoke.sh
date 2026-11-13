@@ -4,11 +4,17 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 IMAGE=epsilab-salesforce:latest
+# Its own compose project and host ports, so the smoke run never stops or resets a running dev stack.
+COMPOSE=(docker compose -p epsilab-smoke)
+export GUI_PORT=3300 API_PORT=8380
+GUI=http://localhost:$GUI_PORT
+API=http://localhost:$API_PORT
 OFFLINE=epsilab-smoke-offline
+ENVCHECK=epsilab-smoke-env
 
 cleanup() {
-  docker compose down --remove-orphans >/dev/null 2>&1 || true
-  docker rm -f "$OFFLINE" >/dev/null 2>&1 || true
+  "${COMPOSE[@]}" down --remove-orphans >/dev/null 2>&1 || true
+  docker rm -f "$OFFLINE" "$ENVCHECK" >/dev/null 2>&1 || true
 }
 trap cleanup EXIT
 cleanup
@@ -23,26 +29,26 @@ wait_for() {
 }
 
 echo "== build"
-docker compose build >/dev/null
+"${COMPOSE[@]}" build >/dev/null
 echo "arch: $(docker image inspect "$IMAGE" --format '{{.Os}}/{{.Architecture}}')"
 [ "$(docker image inspect "$IMAGE" --format '{{.Architecture}}')" = "amd64" ]
 
 echo "== compose up"
-docker compose up -d >/dev/null
-wait_for http://localhost:8080/api/health
-wait_for http://localhost:3000/
+"${COMPOSE[@]}" up -d >/dev/null
+wait_for $API/api/health
+wait_for $GUI/
 
-echo "== REST: $(curl -fsS http://localhost:8080/api/health)"
-echo "== REST All Leads Hot: $(curl -fsS -H 'content-type: application/json' -d '{"object":"Lead","where":[{"field":"IsConverted","op":"eq","value":false},{"field":"Rating","op":"eq","value":"Hot"}],"orderBy":[{"field":"Company"}],"limit":1}' http://localhost:8080/api/query | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).totalSize))')"
-echo "== MCP:  $(npx tsx tests/smoke/mcp-check.ts http://localhost:8080/mcp)"
+echo "== REST: $(curl -fsS $API/api/health)"
+echo "== REST All Leads Hot: $(curl -fsS -H 'content-type: application/json' -d '{"object":"Lead","where":[{"field":"IsConverted","op":"eq","value":false},{"field":"Rating","op":"eq","value":"Hot"}],"orderBy":[{"field":"Company"}],"limit":1}' $API/api/query | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).totalSize))')"
+echo "== MCP:  $(npx tsx tests/smoke/mcp-check.ts $API/mcp)"
 
 echo "== GUI (Playwright)"
-BASE_URL=http://localhost:3000 API_URL=http://localhost:8080 npx playwright test --reporter=line
+BASE_URL=$GUI API_URL=$API npx playwright test --reporter=line
 
 echo "== reset CLI inside the container (after the browser tests' edits)"
-docker compose exec -T app node dist/server/scripts/reset.js | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);console.log(`reset ${r.snapshot}: matches=${r.matches} in ${r.durationMs} ms`);process.exit(r.matches?0:1)})'
+"${COMPOSE[@]}" exec -T app node dist/server/scripts/reset.js | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>{const r=JSON.parse(s);console.log(`reset ${r.snapshot}: matches=${r.matches} in ${r.durationMs} ms`);process.exit(r.matches?0:1)})'
 
-docker compose down >/dev/null
+"${COMPOSE[@]}" down >/dev/null
 
 echo "== offline (--network none)"
 docker run -d --name "$OFFLINE" --network none "$IMAGE" >/dev/null
@@ -52,5 +58,13 @@ for _ in $(seq 1 30); do
 done
 docker exec -i "$OFFLINE" node --input-type=module - < tests/smoke/offline-check.mjs
 docker exec -i "$OFFLINE" node --input-type=module - < tests/smoke/lifecycle-check.mjs
+
+echo "== environment configuration (other ports, SEED_PROFILE=small, fixed CLOCK)"
+docker run -d --name "$ENVCHECK" -p 4100:4100 -p 9180:9180 \
+  -e GUI_PORT=4100 -e API_PORT=9180 -e SEED_PROFILE=small -e CLOCK=2029-03-01T10:00:00Z -e CLOCK_MODE=fixed \
+  "$IMAGE" >/dev/null
+wait_for http://localhost:9180/api/health
+wait_for http://localhost:4100/
+node tests/smoke/env-check.mjs "$(docker exec "$ENVCHECK" cat /app/data/snapshots/baseline-small.db.sha256 | tr -d '[:space:]')"
 
 echo "SMOKE PASSED"

@@ -91,6 +91,8 @@ The image contains a baseline database per `SEED_PROFILE` (`default`, `small`), 
 | Action | REST | MCP | CLI |
 |---|---|---|---|
 | Reset to the baseline (or a named snapshot), byte-identical | `POST /api/admin/reset` `{ "snapshot"? }` | `reset_environment` | `pnpm reset [name]`, or in the container `docker compose exec app node dist/server/scripts/reset.js` |
+
+In the GUI, the settings gear at the top right opens **Environment Controls (demo admin)** → **Reset to Baseline**. It asks for confirmation, calls the same `POST /api/admin/reset`, and on success clears every cached record and returns to Seller Home. It is a control for this assessment environment, not a Salesforce feature.
 | Save a named snapshot | `POST /api/admin/snapshots` `{ "name" }` | `create_snapshot` | |
 | List snapshots | `GET /api/admin/snapshots` | `list_snapshots` | |
 | Prove a restore: file sha256, side files, per-table content | `GET /api/admin/snapshots/{name}/verify` | `verify_snapshot` | |
@@ -106,7 +108,7 @@ pnpm build && pnpm build:db    # builds the server, the GUI and the baseline sna
 pnpm start                     # GUI on :3000, REST and MCP on :8080
 pnpm test                      # unit and integration tests
 pnpm e2e                       # Playwright GUI tests (starts its own server on ports 3100/8180 with a fresh database)
-scripts/smoke.sh               # full stack check inside the linux/amd64 container, online and offline
+scripts/smoke.sh               # full stack check in its own linux/amd64 compose project (ports 3300/8380), online, offline and with non-default env settings; it never touches a running dev stack
 ```
 
 ## MCP tools

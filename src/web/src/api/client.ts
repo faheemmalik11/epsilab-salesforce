@@ -6,6 +6,7 @@ import type {
   ObjectName,
   QueryInput,
   QueryResult,
+  ResetResult,
   SRecord,
   User,
 } from './types';
@@ -59,5 +60,7 @@ export const api = {
   convertLead: (leadId: string, input: Record<string, unknown>) =>
     request<ConvertResult>('POST', `/api/leads/${leadId}/convert`, input),
   clock: () => request<ClockInfo>('GET', '/api/admin/clock'),
+  /** The existing environment reset; the GUI adds no reset logic of its own. */
+  resetEnvironment: () => request<ResetResult>('POST', '/api/admin/reset', {}),
   logCall: (input: Record<string, unknown>) => request<{ id: string }>('POST', '/api/tasks/log-call', input),
 };
