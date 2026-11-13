@@ -4,7 +4,7 @@ import { api, ApiError } from '../api/client';
 import { useDescribe, refreshRecords } from '../api/hooks';
 import type { FieldDescribe, ObjectName } from '../api/types';
 import { useActingUser } from '../context/ActingUser';
-import { LAYOUTS, recordTitle, type TabObject } from '../lib/layouts';
+import { LAYOUTS, recordName, recordTitle, type TabObject } from '../lib/layouts';
 import { FieldInput, type FormValue } from './FieldInput';
 import { initialValue, toApiValue } from '../lib/formValues';
 import { Modal } from './Modal';
@@ -47,9 +47,8 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
     !!field && !SYSTEM_FIELDS.has(field.name) && (field.createable || field.updateable) && (editing || field.createable);
 
   const [values, setValues] = useState<Record<string, FormValue> | null>(null);
-  const formValues: Record<string, FormValue> =
-    values ??
-    (describe.data
+  const startValues: Record<string, FormValue> =
+    describe.data
       ? Object.fromEntries(
           describe.data.fields.map((field) => {
             if (editing) return [field.name, initialValue(field, record)];
@@ -59,7 +58,11 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
             return [field.name, field.defaultValue === undefined ? null : String(field.defaultValue)];
           }),
         )
-      : {});
+      : {};
+  const formValues = values ?? startValues;
+  const dirty =
+    values !== null &&
+    (describe.data?.fields ?? []).some((field) => toApiValue(field, values[field.name] ?? null) !== toApiValue(field, startValues[field.name] ?? null));
 
   const save = useMutation({
     mutationFn: async (_options: { andNew: boolean }) => {
@@ -106,12 +109,15 @@ export function RecordForm({ object, record, initial = {}, onClose, onSaved }: R
     />
   );
 
-  const title = editing ? `Edit ${recordTitle(record)}` : `New ${describe.data?.label ?? object}`;
+  const label = describe.data?.label ?? object;
+  const name = editing ? recordName(record) : null;
+  const title = editing ? (name ? `Edit ${name}` : `Edit ${label}`) : `New ${label}`;
 
   return (
     <Modal
       title={title}
       onClose={onClose}
+      dirty={dirty}
       footer={
         <>
           <button type="button" className="slds-button slds-button_neutral" onClick={onClose}>

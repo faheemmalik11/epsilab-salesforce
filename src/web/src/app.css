@@ -133,8 +133,10 @@ body,
   width: 3rem;
 }
 
-.slds-table thead th + th {
-  border-left: 1px solid var(--cosmos-border);
+/* Measured: only data column headers carry a divider, a 1px line at their right edge (the resize handle).
+   The row number, checkbox and actions columns have none. */
+.cosmos-table thead th.th-data {
+  box-shadow: inset -1px 0 0 var(--cosmos-border);
 }
 
 .th-content {

@@ -215,6 +215,12 @@ export function layoutFor(object: string): Layout | undefined {
   return (LAYOUTS as Record<string, Layout>)[object];
 }
 
+/** The record's readable name (Subject for tasks), or null when it has none. */
+export function recordName(record: Record<string, unknown>): string | null {
+  const name = String(record.Name ?? record.Subject ?? '').trim();
+  return name || null;
+}
+
 /** The text that names a record: Subject for tasks, Name for everything else. */
 export function recordTitle(record: Record<string, unknown>): string {
   return String(record.Name ?? record.Subject ?? record.Id ?? '');

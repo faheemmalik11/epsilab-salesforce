@@ -548,6 +548,7 @@ a {
 }
 
 .slds-modal__header {
+  position: relative;
   border-radius: var(--cosmos-radius-card) var(--cosmos-radius-card) 0 0;
   border-bottom: 1px solid var(--cosmos-border);
   padding: 1rem;
@@ -572,11 +573,14 @@ a {
   box-shadow: none;
 }
 
-.slds-modal__close {
+/* Measured in the org: a 32px circle 40px above the dialog header, aligned to its right edge. */
+.slds-modal__header .slds-modal__close {
+  position: absolute;
   width: 2rem;
   height: 2rem;
   top: -2.5rem;
   right: 0;
+  margin: 0;
   border-radius: var(--cosmos-radius-pill);
   background: #fff;
 }
@@ -585,6 +589,14 @@ a {
   fill: var(--cosmos-brand-dark);
   width: 1rem;
   height: 1rem;
+}
+
+.modal-discard {
+  z-index: 9101;
+}
+
+.modal-discard__backdrop {
+  z-index: 9100;
 }
 
 /* The dialog fades in over 0.1s and the blurred backdrop over 0.4s, as in Lightning. */

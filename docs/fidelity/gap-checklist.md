@@ -73,3 +73,14 @@ Result: every **Fix** row below is now implemented. Each is covered by `tests/e2
 | Row hover | #f3f3f3 row and white cell | **Fix** |
 | Activity form box, filter item boxes | Plain, no inner boxes | **Fix:** remove the extra borders |
 | Menus | No border; `shadow-2` and an 8px radius | **Fix** |
+
+## Review round 3 (manual review findings)
+
+Compared in the same org at the same viewport (1854×927); the Edit dialog was opened and cancelled without saving.
+
+| Control | Salesforce (measured) | Ours before | Result |
+|---|---|---|---|
+| Dialog close button | A 32px white circle inside the dialog header, 40px above the header's top edge (8px gap) and right-aligned with the dialog: at 1854px it sat at x 1315, y 8, over a header at y 48 | Positioned from the container, so it rose toward the top of the viewport | **Fixed:** placed in the header with the measured offset. Matches the org's pixel position at 1854px; checked at 1280, 1440 and 1854 for New, Edit, Convert, Change Owner, Delete, Add Contact Roles and Close This Opportunity (`tests/e2e/modals.spec.ts`) |
+| Backdrop click | **The org's Edit Lead dialog does not close on a backdrop click** | Did not close | **Built as requested in review:** a backdrop click, Escape and the close button all dismiss the dialog. With unsaved changes they first ask "Discard Changes?" (Keep Editing / Discard). Clicks inside never close it. This is an intentional difference from the org, recorded in `TRADEOFFS.md` |
+| Table header separators | Only data column headers have a divider: a 1px #c9c9c9 line at their right edge. The row number (60px), checkbox (32px) and actions columns have none, and body cells have no vertical lines | A left border on every header after the first, including around the row number and checkbox columns | **Fixed:** the divider is only on data columns. Column widths, header and cell alignment, row dividers and selection are unchanged (tested) |
+| Edit dialog title | "Edit <record name>" | Raw record Id for records with no name | **Fixed:** the record's name, or "Edit Lead" (the object label) when it has none. Seed records are untouched (tested) |

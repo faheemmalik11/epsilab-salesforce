@@ -168,7 +168,7 @@ export function DataTable({ object, columns, fields, records, sort, onSort, onEn
                 key={column.field}
                 scope="col"
                 aria-sort={sorted ? (sort.direction === 'asc' ? 'ascending' : 'descending') : undefined}
-                className={`${sortable ? 'slds-is-sortable' : ''} ${sorted ? `slds-is-sorted slds-is-sorted_${sort.direction}` : ''}`}
+                className={`th-data ${sortable ? 'slds-is-sortable' : ''} ${sorted ? `slds-is-sorted slds-is-sorted_${sort.direction}` : ''}`}
               >
                 <div className="th-content">
                   {sortable ? (

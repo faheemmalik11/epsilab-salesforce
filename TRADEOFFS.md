@@ -97,6 +97,7 @@ Each one is recorded with its source in `docs/reference/`.
 | Object icons are circles in the standard SLDS colours, except Lead, which uses its Cosmos theme colour #06A59A | Measured in the real org (object theme info); the other objects match the sprite colours |
 | Recent Records shows the most recently modified leads, accounts, contacts and opportunities, newest Id first on ties | There is no view history; with the fixed test clock many records share a timestamp |
 | Today's Tasks offers Today's, Overdue and All Open filters, filtering the user's open tasks by due date in the browser | The query API compares by equality only; these three cover the card's purpose |
+| Dialogs close on a backdrop click as well as Escape and the close button; a form with unsaved changes asks to discard first | Requested in review. The real org's Edit dialog ignores backdrop clicks, so this is a deliberate difference |
 | The Home greeting uses the app clock's UTC hour | All app dates come from the app clock, not the browser |
 | Button hover, press and focus, the spinner, the modal fade and the blurred backdrop use the Cosmos values measured in the org | The user asked for loaders, animations, buttons and icons to match Salesforce |
 | The Seller Home empty states use SLDS's own illustrations, unmodified (CC BY-ND 4.0, credited in the README) | No artwork is copied from Salesforce's product pages; SLDS's icons are under the same licence |
