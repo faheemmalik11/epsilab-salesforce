@@ -1488,3 +1488,29 @@ body,
   line-height: inherit;
   color: var(--cosmos-link);
 }
+
+/* Path errors float over the page, top centre, like a Lightning toast. */
+.path-error {
+  position: fixed;
+  top: 3.5rem;
+  left: 50%;
+  z-index: 9000;
+  width: min(40rem, calc(100% - 2rem));
+  transform: translateX(-50%);
+}
+
+.path-error .slds-notify {
+  margin: 0;
+  padding-right: 2.5rem;
+  border-radius: 0.5rem;
+}
+
+.path-error__close.slds-button_icon {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+}
+
+.path-error__close .slds-button__icon {
+  fill: #fff;
+}

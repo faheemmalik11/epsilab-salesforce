@@ -10,7 +10,7 @@ import { Menu, type MenuItem } from '../components/Menu';
 import { ChangeOwnerModal, DeleteRecordModal } from '../components/RecordActions';
 import { changedFields, initialValue, toApiValue } from '../lib/formValues';
 import { CloseStageModal } from '../components/CloseStageModal';
-import { ContactRoleModal } from '../components/ContactRoleModal';
+import { ContactRoleModal, EditContactRoleModal } from '../components/ContactRoleModal';
 import { ConvertLeadModal } from '../components/ConvertLeadModal';
 import { DataTable, columnLabel } from '../components/DataTable';
 import { FieldOutput, recordUrl } from '../components/FieldOutput';
@@ -44,6 +44,20 @@ function useStatusUpdate(record: SRecord, field: 'Status' | 'StageName') {
   });
 }
 
+/** A failed Path change, shown over the page like Lightning's error toast, so the layout doesn't jump. */
+function PathError({ error, onDismiss }: { error: unknown; onDismiss(): void }) {
+  if (!error) return null;
+  return (
+    <div className="path-error" data-testid="path-error">
+      <PageError error={error} />
+      <button type="button" className="slds-button slds-button_icon slds-button_icon-inverse path-error__close" title="Close" onClick={onDismiss}>
+        <ButtonIcon name="close" />
+        <span className="slds-assistive-text">Close</span>
+      </button>
+    </div>
+  );
+}
+
 function LeadPath({ lead, statuses, onConvert }: { lead: SRecord; statuses: FieldDescribe | undefined; onConvert(): void }) {
   const update = useStatusUpdate(lead, 'Status');
   const status = String(lead.Status);
@@ -54,7 +68,7 @@ function LeadPath({ lead, statuses, onConvert }: { lead: SRecord; statuses: Fiel
   const currentIndex = shown.indexOf(status);
   return (
     <>
-      <PageError error={update.error} />
+      <PathError error={update.error} onDismiss={() => update.reset()} />
       <Path
         steps={steps}
         currentIndex={currentIndex}
@@ -89,11 +103,12 @@ function OpportunityPath({ opportunity, stages }: { opportunity: SRecord; stages
 
   return (
     <>
-      <PageError error={update.error} />
+      <PathError error={update.error} onDismiss={() => update.reset()} />
       <Path
         steps={steps}
         currentIndex={currentIndex}
         currentText={`Stage: ${stage}`}
+        outcome={isClosed ? (opportunity.IsWon === true ? 'won' : 'lost') : undefined}
         busy={update.isPending}
         action={(index) => {
           const step = steps[index]!;
@@ -312,6 +327,8 @@ function RelatedCard({ list, parent }: { list: RelatedList; parent: SRecord }) {
   const describe = useDescribe(list.object);
   const result = useRecordQuery({ object: list.object, where: [{ field: list.parentField, op: 'eq', value: parent.Id }], limit: 50 });
   const [adding, setAdding] = useState(false);
+  const [editing, setEditing] = useState<SRecord | null>(null);
+  const [deleting, setDeleting] = useState<SRecord | null>(null);
   const fields = new Map((describe.data?.fields ?? []).map((f) => [f.name, f]));
   const records = result.data?.records ?? [];
   const isContactRoles = list.object === 'OpportunityContactRole';
@@ -341,7 +358,16 @@ function RelatedCard({ list, parent }: { list: RelatedList; parent: SRecord }) {
       </div>
       {records.length > 0 && (
         <div className="slds-card__body">
-          <DataTable object={list.object} columns={list.columns} fields={fields} records={records} />
+          <DataTable
+            object={list.object}
+            columns={list.columns}
+            fields={fields}
+            records={records}
+            rowActions={(record) => [
+              { id: 'edit', label: 'Edit', testId: 'related-row-edit', onSelect: () => setEditing(record) },
+              { id: 'delete', label: 'Delete', testId: 'related-row-delete', onSelect: () => setDeleting(record) },
+            ]}
+          />
         </div>
       )}
       {adding &&
@@ -355,6 +381,13 @@ function RelatedCard({ list, parent }: { list: RelatedList; parent: SRecord }) {
             onSaved={() => setAdding(false)}
           />
         ))}
+      {editing &&
+        (isContactRoles ? (
+          <EditContactRoleModal role={editing} onClose={() => setEditing(null)} />
+        ) : (
+          <RecordForm object={list.object as TabObject} record={editing} onClose={() => setEditing(null)} onSaved={() => setEditing(null)} />
+        ))}
+      {deleting && <DeleteRecordModal record={deleting} onClose={() => setDeleting(null)} onDeleted={() => setDeleting(null)} />}
     </article>
   );
 }

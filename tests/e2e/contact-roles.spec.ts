@@ -96,3 +96,52 @@ test('Add Contact Roles asks before discarding a selection', async ({ page, api,
 
   expectHealthy(health);
 });
+
+test('contact role rows can be edited and deleted, and the Path shows errors and outcomes without moving the page', async ({ page, api, health }) => {
+  const accountId = await restCreate(api, 'Account', { Name: 'Row Actions Co' });
+  const first = await restCreate(api, 'Contact', { LastName: 'Rowfirst', AccountId: accountId });
+  const second = await restCreate(api, 'Contact', { LastName: 'Rowsecond', AccountId: accountId });
+  const opportunityId = await restCreate(api, 'Opportunity', { Name: 'Row actions deal', AccountId: accountId, StageName: 'Qualification', CloseDate: '2028-12-31' });
+  await restCreate(api, 'OpportunityContactRole', { OpportunityId: opportunityId, ContactId: first, Role: 'Influencer', IsPrimary: true });
+  await restCreate(api, 'OpportunityContactRole', { OpportunityId: opportunityId, ContactId: second });
+  const card = page.getByTestId('related-OpportunityContactRole');
+  const row = (name: string) => card.getByTestId('data-row').filter({ hasText: name });
+
+  await page.goto(`/lightning/r/Opportunity/${opportunityId}/view`);
+  await row('Rowsecond').getByTestId('row-actions').click();
+  await page.getByTestId('related-row-edit').click();
+  const dialog = page.getByRole('dialog', { name: 'Edit Contact Role' });
+  await dialog.locator('#contact-role-edit-role').selectOption('Evaluator');
+  await checkByLabel(dialog, 'Primary');
+  await saveModal(page);
+  await expect(page.getByTestId('toast')).toContainText('Contact role was saved.');
+  expect(await rolesOf(api, opportunityId)).toEqual([
+    { contact: 'Rowfirst', role: 'Influencer', primary: false },
+    { contact: 'Rowsecond', role: 'Evaluator', primary: true },
+  ]);
+
+  await row('Rowfirst').getByTestId('row-actions').click();
+  await page.getByTestId('related-row-delete').click();
+  await page.getByTestId('confirm-delete').click();
+  await expect(card).toContainText('Contact Roles (1)');
+  expect(await rolesOf(api, opportunityId)).toEqual([{ contact: 'Rowsecond', role: 'Evaluator', primary: true }]);
+
+  // A rejected stage change floats over the page: the Path stays where it was.
+  const path = page.getByTestId('path');
+  const before = (await path.boundingBox())!.y;
+  await page.getByTestId('path-action').click();
+  await expect(page.getByTestId('path-error')).toContainText('Amount is required');
+  expect((await path.boundingBox())!.y).toBe(before);
+  await page.getByTestId('path-error').getByRole('button', { name: 'Close' }).click();
+  await expect(page.getByTestId('path-error')).toHaveCount(0);
+
+  // Won is green and lost is red on the last step.
+  await api.patch(`/api/sobjects/Opportunity/${opportunityId}`, { data: { Amount: 1000, StageName: 'Closed Won' } });
+  await page.reload();
+  await expect(page.getByTestId('path').locator('.slds-path__item').last()).toHaveCSS('background-color', 'rgb(46, 132, 74)');
+  await api.patch(`/api/sobjects/Opportunity/${opportunityId}`, { data: { StageName: 'Closed Lost' } });
+  await page.reload();
+  await expect(page.getByTestId('path').locator('.slds-path__item').last()).toHaveCSS('background-color', 'rgb(186, 5, 23)');
+
+  expectHealthy(health, [/400 PATCH .*\/api\/sobjects\/Opportunity/]);
+});

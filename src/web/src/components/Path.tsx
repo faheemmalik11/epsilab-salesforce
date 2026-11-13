@@ -14,10 +14,12 @@ interface PathProps {
   /** Button label and action for the selected step. */
   action(selectedIndex: number): { label: string; run(): void } | null;
   busy?: boolean;
+  /** A closed opportunity colours its last step: green when won, red when lost. */
+  outcome?: 'won' | 'lost';
 }
 
 /** SLDS Path: completed, current and upcoming steps, with one action for the selected step. */
-export function Path({ steps, currentIndex, currentText, action, busy }: PathProps) {
+export function Path({ steps, currentIndex, currentText, action, busy, outcome }: PathProps) {
   const [selected, setSelected] = useState<number | null>(null);
   const selectedIndex = selected ?? currentIndex;
   const act = selectedIndex >= 0 ? action(selectedIndex) : null;
@@ -36,7 +38,7 @@ export function Path({ steps, currentIndex, currentText, action, busy }: PathPro
                     <li
                       key={step.value}
                       role="presentation"
-                      className={`slds-path__item ${state} ${index === selectedIndex ? 'slds-is-active' : ''}`}
+                      className={`slds-path__item ${state} ${index === selectedIndex ? 'slds-is-active' : ''} ${outcome && index === steps.length - 1 ? `slds-is-${outcome}` : ''}`}
                     >
                       <a
                         aria-selected={index === selectedIndex}

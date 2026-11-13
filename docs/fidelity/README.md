@@ -69,6 +69,7 @@ Each row was compared against the real org at the same viewport (1854×927) and 
 | Empty lists | A centred message under the column headers with an Add button; the org's wording for Accounts and Opportunities, "No items to display." when a filter or search matches nothing | `lead-list.spec.ts` |
 | Lead record | Path always marks the current status; 48px rows with 13px values; email and phone as links | Measured in the org |
 | Convert Lead | 1024px dialog with a 24px title; rows collapse and expand from a chevron, Account open and Contact and Opportunity collapsed to pills | Measured in the org |
+| Opportunity record | Related-list rows have Edit and Delete actions (contact roles edit Role and Primary); the last Path step is green when won and red when lost; a rejected stage change floats over the page as a toast-style error | `contact-roles.spec.ts` |
 | From the first pass | Theme tokens, buttons (hover lift, press, disabled), spinner, modal fade and blur, toast, Path colours, New / Edit modal, Convert dialog | See above |
 
 ## Surface by surface

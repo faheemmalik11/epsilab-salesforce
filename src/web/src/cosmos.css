@@ -938,3 +938,27 @@ input:disabled + .slds-radio__label {
 .slds-has-error .slds-form-element__help {
   color: #b60554;
 }
+
+/* A closed opportunity: Lightning turns the last step green when won and red when lost. */
+.slds-path__nav .slds-is-won,
+.slds-path__nav .slds-is-won:before,
+.slds-path__nav .slds-is-won:after,
+.slds-path__nav .slds-is-won:hover,
+.slds-path__nav .slds-is-won:hover:before,
+.slds-path__nav .slds-is-won:hover:after {
+  background: #2e844a;
+}
+
+.slds-path__nav .slds-is-lost,
+.slds-path__nav .slds-is-lost:before,
+.slds-path__nav .slds-is-lost:after,
+.slds-path__nav .slds-is-lost:hover,
+.slds-path__nav .slds-is-lost:hover:before,
+.slds-path__nav .slds-is-lost:hover:after {
+  background: #ba0517;
+}
+
+.slds-path__nav .slds-is-won .slds-path__link,
+.slds-path__nav .slds-is-lost .slds-path__link {
+  color: #fff;
+}

@@ -22,13 +22,13 @@ const CONTACT_COLUMNS = [
   { label: 'Contact Owner', value: (c: SRecord) => (c.Owner as RelatedRef | null)?.Name },
 ];
 
-function Checkbox({ id, label, checked, onChange }: { id: string; label: string; checked: boolean; onChange(checked: boolean): void }) {
+function Checkbox({ id, label, checked, onChange, visibleLabel }: { id: string; label: string; checked: boolean; onChange(checked: boolean): void; visibleLabel?: boolean }) {
   return (
     <div className="slds-checkbox">
       <input type="checkbox" id={id} checked={checked} onChange={(e) => onChange(e.target.checked)} />
       <label className="slds-checkbox__label" htmlFor={id}>
         <span className="slds-checkbox_faux" />
-        <span className="slds-form-element__label slds-assistive-text">{label}</span>
+        <span className={`slds-form-element__label ${visibleLabel ? '' : 'slds-assistive-text'}`}>{label}</span>
       </label>
     </div>
   );
@@ -375,6 +375,71 @@ export function ContactRoleModal({ opportunity, onClose }: { opportunity: SRecor
             </table>
           </>
         )}
+      </div>
+    </Modal>
+  );
+}
+
+/** Edit Contact Role, from a row's action menu: the role and whether this contact is the primary one. */
+export function EditContactRoleModal({ role, onClose }: { role: SRecord; onClose(): void }) {
+  const describe = useDescribe('OpportunityContactRole');
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [value, setValue] = useState(String(role.Role ?? ''));
+  const [primary, setPrimary] = useState(role.IsPrimary === true);
+  const roleValues = describe.data?.fields.find((f) => f.name === 'Role')?.picklistValues ?? [];
+  const contactName = String((role.Contact as RelatedRef | null)?.Name ?? '');
+
+  const save = useMutation({
+    mutationFn: () => api.update('OpportunityContactRole', role.Id, { Role: value || null, IsPrimary: primary }),
+    onSuccess: async () => {
+      await refreshRecords(queryClient);
+      toast('Contact role was saved.');
+      onClose();
+    },
+  });
+
+  return (
+    <Modal
+      title="Edit Contact Role"
+      size="small"
+      onClose={onClose}
+      dirty={value !== String(role.Role ?? '') || primary !== (role.IsPrimary === true)}
+      footer={
+        <>
+          <button type="button" className="slds-button slds-button_neutral" onClick={onClose}>
+            Cancel
+          </button>
+          <button type="button" className="slds-button slds-button_brand" disabled={save.isPending} onClick={() => save.mutate()}>
+            Save
+          </button>
+        </>
+      }
+    >
+      <PageError error={save.error} />
+      <div className="slds-form-element slds-form-element_stacked">
+        <span className="slds-form-element__label">Contact</span>
+        <div className="slds-form-element__control slds-form-element__static">{contactName}</div>
+      </div>
+      <div className="slds-form-element slds-form-element_stacked">
+        <label className="slds-form-element__label" htmlFor="contact-role-edit-role">
+          Role
+        </label>
+        <div className="slds-form-element__control">
+          <div className="slds-select_container">
+            <select id="contact-role-edit-role" className="slds-select" value={value} onChange={(e) => setValue(e.target.value)}>
+              <option value="">--None--</option>
+              {roleValues.map((v) => (
+                <option key={v.value} value={v.value}>
+                  {v.value}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+      <div className="slds-form-element slds-form-element_stacked">
+        <Checkbox id="contact-role-edit-primary" label="Primary" checked={primary} onChange={setPrimary} visibleLabel />
       </div>
     </Modal>
   );
